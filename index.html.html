@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Comercial · Meta 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<style>
+:root {
+  --sidebar-bg: #0f172a;
+  --sidebar-text: #94a3b8;
+  --sidebar-active: #3b82f6;
+  --content-bg: #f1f5f9;
+  --card-bg: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --border: #e2e8f0;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --blue: #3b82f6;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--content-bg); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
+
+.sidebar { width: 220px; background: var(--sidebar-bg); display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar-logo { padding: 20px 16px 16px; border-bottom: 1px solid #1e2d3d; }
+.sidebar-logo h1 { color: #fff; font-size: 15px; font-weight: 700; line-height: 1.3; }
+.sidebar-logo p { color: var(--sidebar-text); font-size: 11px; margin-top: 3px; }
+.nav-section { padding: 8px 0; }
+.nav-label { padding: 10px 16px 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #475569; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 16px; cursor: pointer; color: var(--sidebar-text); font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; user-select: none; }
+.nav-item:hover { color: #fff; background: rgba(255,255,255,0.05); }
+.nav-item.active { color: #fff; background: rgba(59,130,246,0.15); border-left-color: var(--sidebar-active); }
+.nav-icon { font-size: 15px; width: 18px; text-align: center; }
+.nav-bottom { margin-top: auto; border-top: 1px solid #1e2d3d; padding-top: 4px; }
+
+.main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.topbar { padding: 14px 24px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.topbar h2 { font-size: 17px; font-weight: 600; }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.produto-tabs { display: flex; gap: 2px; background: #f1f5f9; border-radius: 8px; padding: 3px; }
+.produto-tab { padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--text-secondary); transition: all 0.15s; white-space: nowrap; user-select: none; }
+.produto-tab.active { background: white; color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.mes-selector { display: flex; align-items: center; gap: 6px; background: var(--content-bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 13px; }
+.mes-selector select { border: none; background: transparent; font-size: 13px; color: var(--text-primary); outline: none; cursor: pointer; }
+.save-dot { font-size: 11px; color: #10b981; display: flex; align-items: center; gap: 3px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
+.btn-primary { background: var(--blue); color: white; }
+.btn-primary:hover { background: #2563eb; }
+.btn-success { background: #10b981; color: white; }
+.btn-success:hover { background: #059669; }
+.btn-outline { background: white; color: var(--text-primary); border: 1px solid var(--border); }
+.btn-outline:hover { background: var(--content-bg); }
+.btn-danger { background: #fee2e2; color: #991b1b; border: none; }
+.btn-danger:hover { background: #fecaca; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+.content { padding: 20px 24px 24px; flex: 1; overflow-y: auto; }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.kpi-card { background: white; border-radius: 12px; padding: 18px 20px; border: 1px solid var(--border); }
+.kpi-label { font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi-value { font-size: 24px; font-weight: 700; margin: 6px 0 4px; line-height: 1; }
+.kpi-sub { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.badge { display: inline-block; padding: 2px 7px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-green { background: #d1fae5; color: #065f46; }
+.badge-yellow { background: #fef3c7; color: #92400e; }
+.badge-red { background: #fee2e2; color: #991b1b; }
+
+.charts-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; margin-bottom: 20px; }
+.chart-card { background: white; border-radius: 12px; padding: 18px 20px; border: 1px solid var(--border); }
+.chart-title { font-size: 13px; font-weight: 600; margin-bottom: 14px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.chart-wrap { position: relative; }
+
+.section-card { background: white; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 16px; }
+.section-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.section-head-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.section-head-right { display: flex; align-items: center; gap: 8px; }
+
+table.dt { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.dt th { padding: 9px 14px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); background: #f8fafc; border-bottom: 1px solid var(--border); white-space: nowrap; }
+table.dt th.right, table.dt td.right { text-align: right; }
+table.dt td { padding: 9px 14px; border-bottom: 1px solid #f1f5f9; }
+table.dt tr:last-child td { border-bottom: none; }
+table.dt tr.hoverable:hover td { background: #f8fafc; }
+table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2px solid var(--border); }
+
+.pct { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 12px; font-weight: 600; min-width: 50px; text-align: center; }
+.pct-high { background: #d1fae5; color: #065f46; }
+.pct-mid { background: #fef3c7; color: #92400e; }
+.pct-low { background: #fee2e2; color: #991b1b; }
+.pct-zero { background: #f1f5f9; color: var(--text-secondary); }
+
+.rank-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; font-size: 12px; font-weight: 700; }
+.rank-1 { background: #ffd700; color: #78350f; }
+.rank-2 { background: #c0c0c0; color: #374151; }
+.rank-3 { background: #cd7f32; color: #7c2d12; }
+.rank-other { background: #f1f5f9; color: var(--text-secondary); }
+
+.edit-cell { border: none; background: transparent; font-size: 13px; color: var(--text-primary); text-align: right; width: 120px; outline: none; padding: 3px 4px; border-radius: 4px; }
+.edit-cell:focus { background: #eff6ff; outline: 2px solid #bfdbfe; }
+
+.fc-group { border-bottom: 1px solid var(--border); }
+.fc-group:last-child { border-bottom: none; }
+.fc-header { padding: 12px 20px; background: #f8fafc; display: flex; align-items: center; justify-content: space-between; }
+.fc-exec-name { font-weight: 600; font-size: 13px; }
+.fc-exec-total { font-size: 12px; color: var(--text-secondary); }
+.fc-items { padding: 4px 0; }
+.fc-item { display: flex; align-items: center; gap: 10px; padding: 8px 20px; font-size: 13px; transition: background 0.1s; }
+.fc-item:hover { background: #f8fafc; }
+.fc-item.fc-won { background: #f0fdf4; border-left: 3px solid #10b981; }
+.fc-item.fc-lost { background: #fef2f2; border-left: 3px solid #ef4444; opacity: 0.85; }
+.fc-empresa { flex: 1; font-weight: 500; min-width: 0; }
+.fc-valor { font-weight: 600; color: var(--text-primary); white-space: nowrap; text-align: right; }
+.fc-data { color: var(--text-secondary); font-size: 12px; white-space: nowrap; }
+.fc-action-btn { border: none; background: none; cursor: pointer; padding: 3px 6px; border-radius: 4px; opacity: 0; transition: all 0.15s; line-height: 1; font-size: 14px; font-weight: 700; }
+.fc-item:hover .fc-action-btn { opacity: 1; }
+.fc-action-btn:hover { background: var(--content-bg); }
+.fc-action-btn.fc-win { color: #10b981; font-size: 15px; }
+.fc-action-btn.fc-lose { color: #ef4444; }
+.fc-action-btn.fc-reopen { color: var(--text-secondary); font-size: 15px; }
+.fc-del { opacity: 0; cursor: pointer; color: var(--danger); font-size: 16px; line-height: 1; background: none; border: none; padding: 0 4px; }
+.fc-item:hover .fc-del { opacity: 1; }
+.fc-status-tag { font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+.fc-tag-won { background: #d1fae5; color: #065f46; }
+.fc-tag-lost { background: #fee2e2; color: #991b1b; }
+.fc-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+
+.hist-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; padding: 16px 20px; }
+.hist-item { text-align: center; }
+.hist-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.hist-vals { display: flex; justify-content: center; gap: 12px; }
+.hist-val { }
+.hist-year { font-size: 10px; color: var(--text-secondary); }
+.hist-num { font-size: 15px; font-weight: 700; }
+.hist-pct { font-size: 12px; margin-top: 4px; }
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: white; border-radius: 14px; padding: 24px; width: 460px; max-width: 92vw; box-shadow: 0 25px 50px rgba(0,0,0,0.25); }
+.modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 18px; }
+.form-row { margin-bottom: 14px; }
+.form-label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; }
+.form-input, .form-select { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; outline: none; font-family: inherit; }
+.form-input:focus, .form-select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+.toast { position: fixed; bottom: 24px; right: 24px; background: #0f172a; color: white; padding: 11px 18px; border-radius: 8px; font-size: 13px; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+.empty-state { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
+.empty-state p { font-size: 14px; }
+
+.config-section { background: white; border-radius: 12px; border: 1px solid var(--border); padding: 20px; margin-bottom: 16px; }
+.config-section h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+.config-section p { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.6; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.file-info { font-size: 12px; color: #10b981; margin-top: 6px; display: none; }
+
+.comp-table { width: 100%; }
+.comp-table td { padding: 6px 12px; font-size: 13px; }
+.comp-table td:first-child { color: var(--text-secondary); font-weight: 500; width: 110px; }
+.arrow-up { color: #10b981; }
+.arrow-down { color: #ef4444; }
+
+/* Sort bar */
+.sort-bar { display: flex; gap: 6px; padding: 10px 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center; background: #f8fafc; }
+.sort-lbl { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px; }
+.sort-btn { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border); background: white; color: var(--text-secondary); transition: all 0.15s; }
+.sort-btn:hover { background: var(--content-bg); }
+.sort-btn.active { background: var(--blue); color: white; border-color: var(--blue); }
+
+/* Editable value span */
+.editable-val { cursor: pointer; display: inline-block; width: 100%; text-align: right; padding: 3px 6px; border-radius: 4px; transition: background 0.1s; }
+.editable-val:hover { background: #eff6ff; outline: 1px dashed #93c5fd; }
+.edit-active { border: none; background: #eff6ff; font-size: 13px; color: var(--text-primary); text-align: right; width: 120px; outline: 2px solid #3b82f6; padding: 3px 6px; border-radius: 4px; }
+
+/* Product group header cells */
+.grp-head-emp { background: #eff6ff; color: #1e40af; text-align: center !important; font-weight: 700; border-left: 2px solid #bfdbfe; border-right: 2px solid #bfdbfe; }
+.grp-head-jur { background: #f3e8ff; color: #6b21a8; text-align: center !important; font-weight: 700; border-left: 2px solid #e9d5ff; border-right: 2px solid #e9d5ff; }
+.grp-head-oys { background: #fef3c7; color: #92400e; text-align: center !important; font-weight: 700; border-left: 2px solid #fde68a; border-right: 2px solid #fde68a; }
+
+/* Column separators per product group */
+.col-emp { border-left: 2px solid #bfdbfe !important; }
+.col-emp-end { border-right: 2px solid #bfdbfe !important; }
+.col-jur { border-left: 2px solid #e9d5ff !important; }
+.col-jur-end { border-right: 2px solid #e9d5ff !important; }
+.col-oys { border-left: 2px solid #fde68a !important; }
+.col-oys-end { border-right: 2px solid #fde68a !important; }
+
+/* Rank cards */
+.rank-cards { display: flex; flex-direction: column; gap: 8px; padding: 10px 16px; }
+.rank-card { display: grid; grid-template-columns: 52px 1fr auto auto; align-items: center; gap: 14px; padding: 14px 16px; background: white; border-radius: 12px; border: 1px solid var(--border); transition: box-shadow 0.15s; }
+.rank-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.09); }
+.rank-card.rank-gold { border-color: #fbbf24; background: linear-gradient(135deg, #fffbeb 0%, white 60%); }
+.rank-card.rank-silver { border-color: #d1d5db; background: linear-gradient(135deg, #f9fafb 0%, white 60%); }
+.rank-card.rank-bronze { border-color: #d97706; background: linear-gradient(135deg, #fffaf0 0%, white 60%); }
+.rank-medal-big { font-size: 32px; text-align: center; line-height: 1; }
+.rank-num-circle { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 14px; font-weight: 700; background: var(--content-bg); color: var(--text-secondary); margin: 0 auto; }
+.rank-card-name { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+.rank-card-sub { font-size: 12px; color: var(--text-secondary); }
+.rank-progress-track { height: 7px; background: #f1f5f9; border-radius: 4px; margin-top: 8px; overflow: hidden; }
+.rank-progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+.fill-high { background: linear-gradient(90deg, #10b981, #34d399); }
+.fill-mid { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.fill-low { background: linear-gradient(90deg, #ef4444, #f87171); }
+.rank-card-stats { text-align: right; white-space: nowrap; }
+.rank-stat-pct { font-size: 22px; font-weight: 800; line-height: 1; }
+.rank-stat-sub { font-size: 10px; color: var(--text-secondary); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
+.rank-card-gap { white-space: nowrap; font-size: 13px; font-weight: 600; min-width: 90px; text-align: right; }
+.zone-divider { display: flex; align-items: center; gap: 10px; margin: 14px 16px 4px; }
+.zone-chip { padding: 3px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+.chip-gold { background: #fef9c3; color: #854d0e; border: 1px solid #fde68a; }
+.chip-alert { background: #fef3c7; color: #92400e; border: 1px solid #fed7aa; }
+.chip-build { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.zone-line { flex: 1; height: 1px; background: var(--border); }
+
+/* Quarterly cards */
+.quarter-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.quarter-card { background: #f8fafc; border-radius: 10px; padding: 14px 16px; border: 1px solid var(--border); transition: all 0.15s; }
+.quarter-card.q-current { background: #eff6ff; border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.q-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-secondary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.q-current .q-label { color: #1d4ed8; }
+.q-real { font-size: 16px; font-weight: 800; line-height: 1.2; color: var(--text-primary); }
+.q-meta { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+.q-track { height: 5px; background: #e2e8f0; border-radius: 3px; margin-top: 10px; overflow: hidden; }
+.q-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h1>Painel Comercial</h1>
+    <p id="sidebar-ano">Meta 2026 · Starian</p>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Visões</div>
+    <div class="nav-item active" data-view="dashboard" onclick="setView('dashboard')"><span class="nav-icon">📊</span>Dashboard</div>
+    <div class="nav-item" data-view="resultados" onclick="setView('resultados')"><span class="nav-icon">📋</span>Resultados</div>
+    <div class="nav-item" data-view="ranking" onclick="setView('ranking')"><span class="nav-icon">🏆</span>Ranking</div>
+    <div class="nav-item" data-view="forecast" onclick="setView('forecast')"><span class="nav-icon">🔭</span>Forecast</div>
+    <div class="nav-item" data-view="historico" onclick="setView('historico')"><span class="nav-icon">📈</span>Histórico</div>
+  </div>
+  <div class="nav-bottom">
+    <div class="nav-item" data-view="dados" onclick="setView('dados')"><span class="nav-icon">💾</span>Dados</div>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <h2 id="view-title">Dashboard</h2>
+    <div class="topbar-right">
+      <div class="produto-tabs" id="produto-tabs">
+        <div class="produto-tab active" onclick="setProduto('TOTAL')">Total</div>
+        <div class="produto-tab" onclick="setProduto('EMP')">Empresas</div>
+        <div class="produto-tab" onclick="setProduto('JUR')">Jurimetria</div>
+        <div class="produto-tab" onclick="setProduto('OYS')">Oystr</div>
+      </div>
+      <div class="mes-selector">📅
+        <select id="mes-select" onchange="setMes(parseInt(this.value))">
+          <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+          <option value="4">Abril</option><option value="5" selected>Maio</option><option value="6">Junho</option>
+          <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+          <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+      </div>
+      <span class="save-dot" id="save-dot">● Salvo</span>
+      <span class="save-dot" id="m365-dot" style="cursor:pointer;display:none" onclick="setView('dados')" title="Status sincronização Microsoft 365"></span>
+    </div>
+  </div>
+  <div class="content" id="content-area"></div>
+</div>
+
+<!-- Modal Forecast -->
+<div class="modal-overlay" id="modal-fc">
+  <div class="modal">
+    <h3>Adicionar Oportunidade</h3>
+    <div class="form-row"><label class="form-label">Executivo / Canal</label><select class="form-select" id="fc-exec" onchange="onExecChange()"></select></div>
+    <div class="form-row" id="fc-gestor-row" style="display:none">
+      <label class="form-label">Gestor Comercial (vendedor do canal)</label>
+      <input class="form-input" id="fc-gestor" type="text" placeholder="Nome do gestor comercial responsável">
+    </div>
+    <div class="form-row"><label class="form-label">Empresa / Cliente</label><input class="form-input" id="fc-empresa-input" type="text" placeholder="Nome da empresa"></div>
+    <div class="form-row"><label class="form-label">Valor Estimado (R$)</label><input class="form-input" id="fc-valor" type="number" placeholder="0.00" step="0.01" min="0"></div>
+    <div class="form-row"><label class="form-label">Data Prevista de Fechamento</label><input class="form-input" id="fc-data" type="date"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveFc()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Ganho -->
+<div class="modal-overlay" id="modal-ganho">
+  <div class="modal" style="width:400px">
+    <h3>🏆 Marcar como Ganho</h3>
+    <div class="form-row">
+      <label class="form-label">Empresa</label>
+      <div id="ganho-empresa-label" style="font-size:14px;font-weight:600;padding:6px 0;color:var(--text-primary)"></div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Valor Estimado</label>
+      <div id="ganho-estimado-label" style="font-size:13px;color:var(--text-secondary);padding:2px 0"></div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Valor Real Fechado (R$)</label>
+      <input class="form-input" id="ganho-valor" type="number" placeholder="0.00" step="0.01" min="0">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeGanhoModal()">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarGanho()">✓ Confirmar Ganho</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// =====================================================================
+// DADOS INICIAIS (extraídos do Excel meta 2026)
+// =====================================================================
+const EXEC_INICIAL = [
+  {id:'NO_RISK',    nome:'NO RISK',    tipo:'Canal', meta:{EMP:125000,   JUR:18700,  OYS:42300},
+   meses:{1:{EMP:{meta:7500,real:1822.32},JUR:{meta:1000,real:0},OYS:{meta:2100,real:1952.45}},2:{EMP:{meta:9375,real:4328.8},JUR:{meta:1100,real:944},OYS:{meta:2100,real:2981.8}},3:{EMP:{meta:10625,real:5486.8},JUR:{meta:1300,real:0},OYS:{meta:2100,real:5650}},4:{EMP:{meta:10000,real:1178.95},JUR:{meta:1500,real:0},OYS:{meta:3200,real:0}},5:{EMP:{meta:11250,real:455.8},JUR:{meta:1500,real:0},OYS:{meta:3200,real:0}},6:{EMP:{meta:11875,real:0},JUR:{meta:1500,real:0},OYS:{meta:3200,real:0}},7:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3200,real:0}},8:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3200,real:0}},9:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3200,real:0}},10:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3200,real:0}},11:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3200,real:0}},12:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3200,real:0}}}},
+  {id:'SUPRAMONTE', nome:'SUPRAMONTE', tipo:'Canal', meta:{EMP:295000,   JUR:33400,  OYS:48600},
+   meses:{1:{EMP:{meta:17700,real:13180.17},JUR:{meta:2000,real:0},OYS:{meta:2800,real:0}},2:{EMP:{meta:22125,real:34346.22},JUR:{meta:2200,real:2640.05},OYS:{meta:2800,real:0}},3:{EMP:{meta:25075,real:11916.75},JUR:{meta:2500,real:0},OYS:{meta:2800,real:0}},4:{EMP:{meta:23600,real:20282.75},JUR:{meta:2800,real:3200},OYS:{meta:3600,real:0}},5:{EMP:{meta:26550,real:13196.72},JUR:{meta:2800,real:2400.58},OYS:{meta:3600,real:0}},6:{EMP:{meta:28025,real:0},JUR:{meta:2800,real:0},OYS:{meta:3600,real:0}},7:{EMP:{meta:29000,real:0},JUR:{meta:2800,real:0},OYS:{meta:3600,real:0}},8:{EMP:{meta:29000,real:0},JUR:{meta:2800,real:0},OYS:{meta:3600,real:0}},9:{EMP:{meta:29000,real:0},JUR:{meta:2800,real:0},OYS:{meta:3600,real:0}},10:{EMP:{meta:29000,real:0},JUR:{meta:2800,real:0},OYS:{meta:3600,real:0}},11:{EMP:{meta:29000,real:0},JUR:{meta:2800,real:0},OYS:{meta:3600,real:0}},12:{EMP:{meta:29000,real:0},JUR:{meta:2800,real:0},OYS:{meta:3600,real:0}}}},
+  {id:'LEGAL_4B',   nome:'LEGAL 4B',   tipo:'Canal', meta:{EMP:85000,    JUR:11450,  OYS:38700},
+   meses:{1:{EMP:{meta:5100,real:0},JUR:{meta:500,real:0},OYS:{meta:1600,real:0}},2:{EMP:{meta:6375,real:3575.69},JUR:{meta:600,real:0},OYS:{meta:1600,real:0}},3:{EMP:{meta:7225,real:89686.98},JUR:{meta:750,real:0},OYS:{meta:1600,real:16800}},4:{EMP:{meta:6800,real:21925.64},JUR:{meta:900,real:0},OYS:{meta:3000,real:0}},5:{EMP:{meta:7650,real:1125},JUR:{meta:900,real:0},OYS:{meta:3000,real:1125}},6:{EMP:{meta:8075,real:0},JUR:{meta:900,real:0},OYS:{meta:3000,real:0}},7:{EMP:{meta:8500,real:0},JUR:{meta:900,real:0},OYS:{meta:3000,real:0}},8:{EMP:{meta:8500,real:0},JUR:{meta:900,real:0},OYS:{meta:3000,real:0}},9:{EMP:{meta:8500,real:0},JUR:{meta:900,real:0},OYS:{meta:3000,real:0}},10:{EMP:{meta:8500,real:0},JUR:{meta:900,real:0},OYS:{meta:3000,real:0}},11:{EMP:{meta:8500,real:0},JUR:{meta:900,real:0},OYS:{meta:3000,real:0}},12:{EMP:{meta:8500,real:0},JUR:{meta:900,real:0},OYS:{meta:3000,real:0}}}},
+  {id:'FG',         nome:'FG',         tipo:'Canal', meta:{EMP:85511.66, JUR:15098,  OYS:41388},
+   meses:{1:{EMP:{meta:3900,real:0},JUR:{meta:500,real:0},OYS:{meta:1100,real:0}},2:{EMP:{meta:4875,real:11797.54},JUR:{meta:600,real:0},OYS:{meta:1100,real:510}},3:{EMP:{meta:5525,real:0},JUR:{meta:750,real:0},OYS:{meta:1100,real:0}},4:{EMP:{meta:6787.24,real:0},JUR:{meta:1242,real:0},OYS:{meta:2898,real:0}},5:{EMP:{meta:8503.44,real:2483.13},JUR:{meta:1242,real:0},OYS:{meta:2898,real:1059}},6:{EMP:{meta:8838.89,real:0},JUR:{meta:1242,real:0},OYS:{meta:2898,real:0}},7:{EMP:{meta:9000,real:0},JUR:{meta:1242,real:0},OYS:{meta:2898,real:0}},8:{EMP:{meta:9000,real:0},JUR:{meta:1242,real:0},OYS:{meta:2898,real:0}},9:{EMP:{meta:9000,real:0},JUR:{meta:1242,real:0},OYS:{meta:2898,real:0}},10:{EMP:{meta:9000,real:0},JUR:{meta:1242,real:0},OYS:{meta:2898,real:0}},11:{EMP:{meta:9000,real:0},JUR:{meta:1242,real:0},OYS:{meta:2898,real:0}},12:{EMP:{meta:9000,real:0},JUR:{meta:1242,real:0},OYS:{meta:2898,real:0}}}},
+  {id:'SSP',        nome:'SSP',        tipo:'Canal', meta:{EMP:44835.12, JUR:7802,   OYS:20412},
+   meses:{1:{EMP:{meta:2951.69,real:2900},JUR:{meta:500,real:0},OYS:{meta:1100,real:0}},2:{EMP:{meta:4164.08,real:0},JUR:{meta:600,real:0},OYS:{meta:1100,real:0}},3:{EMP:{meta:4252.97,real:0},JUR:{meta:750,real:0},OYS:{meta:1100,real:0}},4:{EMP:{meta:2589.71,real:0},JUR:{meta:558,real:0},OYS:{meta:1302,real:0}},5:{EMP:{meta:4329.3,real:0},JUR:{meta:558,real:0},OYS:{meta:1302,real:0}},6:{EMP:{meta:4346.35,real:0},JUR:{meta:558,real:0},OYS:{meta:1302,real:0}},7:{EMP:{meta:4500,real:0},JUR:{meta:558,real:0},OYS:{meta:1302,real:0}},8:{EMP:{meta:4500,real:0},JUR:{meta:558,real:0},OYS:{meta:1302,real:0}},9:{EMP:{meta:4500,real:0},JUR:{meta:558,real:0},OYS:{meta:1302,real:0}},10:{EMP:{meta:4500,real:0},JUR:{meta:558,real:0},OYS:{meta:1302,real:0}},11:{EMP:{meta:4500,real:0},JUR:{meta:558,real:0},OYS:{meta:1302,real:0}},12:{EMP:{meta:4500,real:0},JUR:{meta:558,real:0},OYS:{meta:1302,real:0}}}},
+  {id:'RAFAEL',     nome:'RAFAEL',     tipo:'CLT',   meta:{EMP:125000,   JUR:19300,  OYS:40800},
+   meses:{1:{EMP:{meta:7500,real:5466.66},JUR:{meta:1000,real:0},OYS:{meta:2100,real:0}},2:{EMP:{meta:9375,real:3489.9},JUR:{meta:1100,real:0},OYS:{meta:2100,real:2018.84}},3:{EMP:{meta:10625,real:4254.02},JUR:{meta:1300,real:0},OYS:{meta:2100,real:18251}},4:{EMP:{meta:10000,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},5:{EMP:{meta:11250,real:65},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},6:{EMP:{meta:11875,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},7:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},8:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},9:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},10:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},11:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},12:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}}}},
+  {id:'RICARDO',    nome:'RICARDO',    tipo:'CLT',   meta:{EMP:65000,    JUR:11100,  OYS:30900},
+   meses:{1:{EMP:{meta:3900,real:2118.15},JUR:{meta:500,real:0},OYS:{meta:1100,real:0}},2:{EMP:{meta:4875,real:6707.62},JUR:{meta:550,real:0},OYS:{meta:1100,real:0}},3:{EMP:{meta:5525,real:12570.06},JUR:{meta:750,real:0},OYS:{meta:1100,real:0}},4:{EMP:{meta:5200,real:0},JUR:{meta:900,real:0},OYS:{meta:2100,real:0}},5:{EMP:{meta:5850,real:0},JUR:{meta:900,real:0},OYS:{meta:2100,real:0}},6:{EMP:{meta:6175,real:0},JUR:{meta:900,real:0},OYS:{meta:2100,real:0}},7:{EMP:{meta:6500,real:0},JUR:{meta:900,real:0},OYS:{meta:2100,real:0}},8:{EMP:{meta:6500,real:0},JUR:{meta:900,real:0},OYS:{meta:2100,real:0}},9:{EMP:{meta:6500,real:0},JUR:{meta:900,real:0},OYS:{meta:2100,real:0}},10:{EMP:{meta:6500,real:0},JUR:{meta:900,real:0},OYS:{meta:2100,real:0}},11:{EMP:{meta:6500,real:0},JUR:{meta:900,real:0},OYS:{meta:2100,real:0}},12:{EMP:{meta:6500,real:0},JUR:{meta:900,real:0},OYS:{meta:2100,real:0}}}},
+  {id:'TARCISIO',   nome:'TARCISIO',   tipo:'CLT',   meta:{EMP:115000,   JUR:19600,  OYS:40800},
+   meses:{1:{EMP:{meta:6900,real:0},JUR:{meta:1000,real:6876.6},OYS:{meta:2100,real:0}},2:{EMP:{meta:8625,real:1020},JUR:{meta:1100,real:0},OYS:{meta:2100,real:0}},3:{EMP:{meta:9775,real:3971.96},JUR:{meta:1300,real:0},OYS:{meta:2100,real:0}},4:{EMP:{meta:9200,real:38753.41},JUR:{meta:1500,real:23999.99},OYS:{meta:3000,real:63000}},5:{EMP:{meta:10350,real:2820.2},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},6:{EMP:{meta:10925,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},7:{EMP:{meta:11500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},8:{EMP:{meta:11500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},9:{EMP:{meta:11500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},10:{EMP:{meta:11500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},11:{EMP:{meta:11500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},12:{EMP:{meta:11500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}}}},
+  {id:'JOAO',       nome:'JOÃO',       tipo:'CLT',   meta:{EMP:125000,   JUR:19600,  OYS:40800},
+   meses:{1:{EMP:{meta:7500,real:0},JUR:{meta:1000,real:0},OYS:{meta:2100,real:0}},2:{EMP:{meta:9375,real:7817.88},JUR:{meta:1100,real:0},OYS:{meta:2100,real:0}},3:{EMP:{meta:10625,real:8055.81},JUR:{meta:1300,real:0},OYS:{meta:2100,real:0}},4:{EMP:{meta:10000,real:325},JUR:{meta:1500,real:6500},OYS:{meta:3000,real:8800}},5:{EMP:{meta:11250,real:130},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},6:{EMP:{meta:11875,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},7:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},8:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},9:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},10:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},11:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}},12:{EMP:{meta:12500,real:0},JUR:{meta:1500,real:0},OYS:{meta:3000,real:0}}}},
+  {id:'CAMILA',     nome:'CAMILA',     tipo:'CLT',   meta:{EMP:82000,    JUR:12700,  OYS:30900},
+   meses:{1:{EMP:{meta:4920,real:4381.4},JUR:{meta:500,real:0},OYS:{meta:1100,real:7500}},2:{EMP:{meta:6150,real:2675},JUR:{meta:550,real:0},OYS:{meta:1100,real:0}},3:{EMP:{meta:6970,real:2671.52},JUR:{meta:750,real:0},OYS:{meta:1100,real:2000}},4:{EMP:{meta:6560,real:0},JUR:{meta:1000,real:0},OYS:{meta:2100,real:0}},5:{EMP:{meta:7380,real:853.62},JUR:{meta:1000,real:0},OYS:{meta:2100,real:0}},6:{EMP:{meta:7790,real:0},JUR:{meta:1000,real:0},OYS:{meta:2100,real:0}},7:{EMP:{meta:8000,real:0},JUR:{meta:1000,real:0},OYS:{meta:2100,real:0}},8:{EMP:{meta:8000,real:0},JUR:{meta:1000,real:0},OYS:{meta:2100,real:0}},9:{EMP:{meta:8000,real:0},JUR:{meta:1000,real:0},OYS:{meta:2100,real:0}},10:{EMP:{meta:8000,real:0},JUR:{meta:1000,real:0},OYS:{meta:2100,real:0}},11:{EMP:{meta:8000,real:0},JUR:{meta:1000,real:0},OYS:{meta:2100,real:0}},12:{EMP:{meta:8000,real:0},JUR:{meta:1000,real:0},OYS:{meta:2100,real:0}}}},
+  {id:'YAGO',       nome:'YAGO',       tipo:'CLT',   meta:{EMP:45000,    JUR:11050,  OYS:20400},
+   meses:{1:{EMP:{meta:2700,real:0},JUR:{meta:500,real:0},OYS:{meta:800,real:0}},2:{EMP:{meta:3375,real:493.75},JUR:{meta:500,real:0},OYS:{meta:800,real:2000}},3:{EMP:{meta:3825,real:1861.85},JUR:{meta:550,real:0},OYS:{meta:800,real:0}},4:{EMP:{meta:3600,real:5166.48},JUR:{meta:900,real:0},OYS:{meta:1300,real:11470.5}},5:{EMP:{meta:4050,real:0},JUR:{meta:900,real:0},OYS:{meta:1300,real:0}},6:{EMP:{meta:4275,real:0},JUR:{meta:900,real:0},OYS:{meta:1300,real:0}},7:{EMP:{meta:4500,real:0},JUR:{meta:900,real:0},OYS:{meta:1300,real:0}},8:{EMP:{meta:4500,real:0},JUR:{meta:900,real:0},OYS:{meta:1300,real:0}},9:{EMP:{meta:4500,real:0},JUR:{meta:900,real:0},OYS:{meta:1300,real:0}},10:{EMP:{meta:4500,real:0},JUR:{meta:900,real:0},OYS:{meta:1300,real:0}},11:{EMP:{meta:4500,real:0},JUR:{meta:900,real:0},OYS:{meta:1300,real:0}},12:{EMP:{meta:4500,real:0},JUR:{meta:900,real:0},OYS:{meta:1300,real:0}}}},
+  {id:'SABRINA',    nome:'SABRINA',    tipo:'CLT',   meta:{EMP:29000,    JUR:3600,   OYS:6750},
+   meses:{1:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},2:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},3:{EMP:{meta:0,real:65},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},4:{EMP:{meta:2160,real:1500},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},5:{EMP:{meta:3888,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},6:{EMP:{meta:3252,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},7:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},8:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},9:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},10:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},11:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},12:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}}}},
+  {id:'LAURA',      nome:'LAURA',      tipo:'CLT',   meta:{EMP:29000,    JUR:3600,   OYS:6750},
+   meses:{1:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},2:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},3:{EMP:{meta:0,real:724.04},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},4:{EMP:{meta:2160,real:839.67},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},5:{EMP:{meta:3888,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},6:{EMP:{meta:3252,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},7:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},8:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},9:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},10:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},11:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},12:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}}}},
+  {id:'HC3',        nome:'HC3',        tipo:'CLT',   meta:{EMP:10000,    JUR:1500,   OYS:2250},
+   meses:{1:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},2:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},3:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},4:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},5:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},6:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},7:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},8:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},9:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},10:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},11:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},12:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}}}},
+  {id:'HC4',        nome:'HC4',        tipo:'CLT',   meta:{EMP:10000,    JUR:1500,   OYS:2250},
+   meses:{1:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},2:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},3:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},4:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},5:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},6:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},7:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},8:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},9:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},10:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},11:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},12:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}}}}
+];
+
+const FC_INICIAL = [
+  {id:1,exec:'RAFAEL',empresa:'Torra Torra',valor:1500,data:'2026-05-26'},
+  {id:2,exec:'RAFAEL',empresa:'Total Pass',valor:14000,data:'2026-05-29'},
+  {id:3,exec:'RAFAEL',empresa:'FastShop',valor:19000,data:'2026-05-29'},
+  {id:4,exec:'JOAO',empresa:'BRK',valor:35411,data:'2026-05-29'},
+  {id:5,exec:'JOAO',empresa:'SBC',valor:10000,data:'2026-05-29'},
+  {id:6,exec:'JOAO',empresa:'Termomecanica',valor:3500,data:'2026-05-29'},
+  {id:7,exec:'JOAO',empresa:'Unimed Maceió',valor:2065,data:'2026-05-27'},
+  {id:8,exec:'JOAO',empresa:'LHG',valor:12000,data:'2026-05-27'},
+  {id:9,exec:'CAMILA',empresa:'WAM',valor:4500,data:'2026-05-26'},
+  {id:10,exec:'TARCISIO',empresa:'Embracon',valor:2200,data:'2026-05-27'},
+  {id:11,exec:'YAGO',empresa:'Ultragaz',valor:4300,data:'2026-05-27'},
+  {id:12,exec:'YAGO',empresa:'Emtel',valor:1500,data:'2026-05-28'},
+  {id:13,exec:'RICARDO',empresa:'Tecnobank',valor:2500,data:'2026-05-28'},
+  {id:14,exec:'SABRINA',empresa:'Itaipu',valor:2000,data:'2026-05-27'},
+  {id:15,exec:'LAURA',empresa:'Genesis',valor:840,data:'2026-05-29'}
+];
+
+const HIST_2025 = {
+  ytd: 301109.90,
+  meses: {1:117124.77, 2:73429.56, 3:70000, 4:40654.75, 5:120057.18, 6:0},
+  tri1: 260455.15, tri2: 230286.99
+};
+
+// =====================================================================
+// STATE
+// =====================================================================
+const MESES_NOMES = ['','Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const PRODS = ['EMP','JUR','OYS'];
+let state = {
+  view: 'dashboard',
+  mes: 5,
+  prod: 'TOTAL',
+  nextFcId: 100,
+  sortResultados: 'default'
+};
+let dados = null;
+let charts = {};
+
+// =====================================================================
+// INIT
+// =====================================================================
+function initDados() {
+  const saved = localStorage.getItem('painel_meta_2026');
+  if (saved) {
+    try {
+      dados = JSON.parse(saved);
+      if (!dados.forecast) dados.forecast = FC_INICIAL;
+      if (!dados.anoAtivo) dados.anoAtivo = 2026;
+      if (!dados.historico) dados.historico = {
+        2025: { ytd: HIST_2025.ytd, meses: Object.assign({}, HIST_2025.meses), tri1: HIST_2025.tri1, tri2: HIST_2025.tri2, tri3: 0, tri4: 0 }
+      };
+      dados.forecast.forEach(f => {
+        if (f.status    === undefined) f.status    = 'open';
+        if (f.gestor    === undefined) f.gestor    = '';
+        if (f.valorGanho=== undefined) f.valorGanho= 0;
+      });
+      return;
+    } catch(e) {}
+  }
+  dados = {
+    anoAtivo: 2026,
+    historico: {
+      2025: { ytd: HIST_2025.ytd, meses: Object.assign({}, HIST_2025.meses), tri1: HIST_2025.tri1, tri2: HIST_2025.tri2, tri3: 0, tri4: 0 }
+    },
+    executivos: JSON.parse(JSON.stringify(EXEC_INICIAL)),
+    forecast: JSON.parse(JSON.stringify(FC_INICIAL))
+  };
+  salvar();
+}
+
+function salvar() {
+  localStorage.setItem('painel_meta_2026', JSON.stringify(dados));
+  document.getElementById('save-dot').textContent = '● Salvo';
+  document.getElementById('save-dot').style.color = '#10b981';
+  if (_m365Account) syncToM365();
+}
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+function R(n) { return 'R$ ' + n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function pct(real, meta) { return meta > 0 ? (real/meta*100) : 0; }
+function pctBadge(p) {
+  const cls = p >= 100 ? 'pct-high' : p >= 75 ? 'pct-mid' : p > 0 ? 'pct-low' : 'pct-zero';
+  return `<span class="pct ${cls}">${p.toFixed(1)}%</span>`;
+}
+function getExec(id) { return dados.executivos.find(e => e.id === id); }
+
+function getMes(e, m) {
+  if (!e.meses[m]) e.meses[m] = {EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}};
+  return e.meses[m];
+}
+
+function totalMeta(e, m, p) {
+  const md = getMes(e, m);
+  if (p === 'TOTAL') return md.EMP.meta + md.JUR.meta + md.OYS.meta;
+  return md[p].meta;
+}
+
+function totalReal(e, m, p) {
+  const md = getMes(e, m);
+  if (p === 'TOTAL') return md.EMP.real + md.JUR.real + md.OYS.real;
+  return md[p].real;
+}
+
+function ytdMeta(e, p, ate) {
+  let t = 0;
+  for (let m = 1; m <= ate; m++) t += totalMeta(e, m, p);
+  return t;
+}
+
+function ytdReal(e, p, ate) {
+  let t = 0;
+  for (let m = 1; m <= ate; m++) t += totalReal(e, m, p);
+  return t;
+}
+
+// =====================================================================
+// QUARTERLY HELPERS
+// =====================================================================
+function getQuarter(m) { return Math.ceil(m / 3); }
+function quarterMonths(q) { return [q*3-2, q*3-1, q*3]; }
+function quarterName(q) { return ['Jan–Mar','Abr–Jun','Jul–Set','Out–Dez'][q-1]; }
+
+function execQMeta(e, q, p) { return quarterMonths(q).reduce((s,m) => s + totalMeta(e,m,p), 0); }
+function execQReal(e, q, p) { return quarterMonths(q).reduce((s,m) => s + totalReal(e,m,p), 0); }
+function teamQMeta(q, p) { return dados.executivos.reduce((s,e) => s + execQMeta(e,q,p), 0); }
+function teamQReal(q, p) { return dados.executivos.reduce((s,e) => s + execQReal(e,q,p), 0); }
+
+function buildDashQuarterHtml(m, p) {
+  const curQ = getQuarter(m);
+  const pNome = p === 'TOTAL' ? 'todos os produtos' : {EMP:'Empresas',JUR:'Jurimetria',OYS:'Oystr'}[p];
+  const cards = [1,2,3,4].map(q => {
+    const qM = teamQMeta(q, p);
+    const qR = teamQReal(q, p);
+    const qP = pct(qR, qM);
+    const isCurr = q === curQ;
+    const fillColor = qP >= 100 ? '#10b981' : qP >= 75 ? '#f59e0b' : qP > 0 ? '#ef4444' : '#cbd5e1';
+    const tag = isCurr ? `<span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:3px;font-weight:700">ATUAL</span>` : '';
+    return `<div class="quarter-card${isCurr?' q-current':''}">
+      <div class="q-label">Q${q} · ${quarterName(q)} ${tag}</div>
+      <div class="q-real">${R(qR)}</div>
+      <div class="q-meta">Meta: ${R(qM)}</div>
+      <div class="q-track"><div class="q-fill" style="width:${Math.min(qP,100).toFixed(1)}%;background:${fillColor}"></div></div>
+      <div style="margin-top:8px">${pctBadge(qP)}</div>
+    </div>`;
+  }).join('');
+  return `<div class="section-card" style="margin-top:14px">
+    <div class="section-head">
+      <span class="section-head-title">Metas Trimestrais ${dados.anoAtivo||2026}</span>
+      <span style="font-size:12px;color:var(--text-secondary)">Bônus trimestrais · ${pNome}</span>
+    </div>
+    <div style="padding:14px 20px"><div class="quarter-grid">${cards}</div></div>
+  </div>`;
+}
+
+function buildQTrimestralHtml(m, p, sortedExecs) {
+  const q = getQuarter(m);
+  const qMons = quarterMonths(q);
+  let rows = '';
+  sortedExecs.forEach(e => {
+    const tipoBg = e.tipo==='Canal' ? '#eff6ff' : '#f0fdf4';
+    const tipoCor = e.tipo==='Canal' ? '#1d4ed8' : '#166534';
+    const tipoTag = `<span style="font-size:11px;background:${tipoBg};color:${tipoCor};padding:2px 6px;border-radius:4px;font-weight:600">${e.tipo}</span>`;
+    const qMeta = execQMeta(e, q, p);
+    const qReal = execQReal(e, q, p);
+    const qP = pct(qReal, qMeta);
+    const gap = qReal - qMeta;
+    rows += `<tr class="hoverable">
+      <td><strong>${e.nome}</strong></td><td>${tipoTag}</td>
+      <td class="right">${R(qMeta)}</td>
+      <td class="right">${R(qReal)}</td>
+      <td class="right">${pctBadge(qP)}</td>
+      <td class="right" style="color:${gap>=0?'#10b981':'#ef4444'};font-weight:600">${gap>=0?'+':''}${R(gap)}</td>
+    </tr>`;
+  });
+  const tQM = dados.executivos.reduce((s,e)=>s+execQMeta(e,q,p),0);
+  const tQR = dados.executivos.reduce((s,e)=>s+execQReal(e,q,p),0);
+  rows += `<tr class="total-row"><td>TOTAL</td><td></td><td class="right">${R(tQM)}</td><td class="right">${R(tQR)}</td><td class="right">${pctBadge(pct(tQR,tQM))}</td><td class="right">${R(tQR-tQM)}</td></tr>`;
+  return `<div class="section-card" style="margin-top:12px">
+    <div class="section-head">
+      <span class="section-head-title">Resumo Trimestral — Q${q} (${qMons.map(mo=>MESES_NOMES[mo].substring(0,3)).join(' + ')})</span>
+      <span style="font-size:12px;color:var(--text-secondary)">Acumulado para bônus · ${p==='TOTAL'?'todos os produtos':{EMP:'Empresas',JUR:'Jurimetria',OYS:'Oystr'}[p]}</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="dt">
+        <thead><tr><th>Executivo</th><th>Tipo</th><th class="right">Meta Q</th><th class="right">Realizado Q</th><th class="right">%</th><th class="right">Gap</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// =====================================================================
+// MULTI-YEAR HELPERS
+// =====================================================================
+function getHistAno(year) {
+  if (dados.historico && dados.historico[year]) return dados.historico[year];
+  if (year === 2025) return { ytd: HIST_2025.ytd, meses: Object.assign({}, HIST_2025.meses), tri1: HIST_2025.tri1, tri2: HIST_2025.tri2, tri3: 0, tri4: 0 };
+  return { ytd: 0, meses: {}, tri1: 0, tri2: 0, tri3: 0, tri4: 0 };
+}
+
+function updateYearUI() {
+  const ano = dados.anoAtivo || 2026;
+  document.title = `Painel Comercial · Meta ${ano}`;
+  const el = document.getElementById('sidebar-ano');
+  if (el) el.textContent = `Meta ${ano} · Starian`;
+}
+
+function transicionarAno(novoAno, copiarMetas) {
+  const anoAtual = dados.anoAtivo || 2026;
+  if (novoAno <= anoAtual) { toast('O novo ano deve ser maior que o atual.'); return; }
+  if (!confirm(`Confirma a transição para o exercício ${novoAno}?\n\nOs dados de ${anoAtual} serão salvos no histórico e os realizados serão zerados para o novo ano.`)) return;
+
+  const mesHist = {};
+  for (let m = 1; m <= 12; m++) {
+    mesHist[m] = dados.executivos.reduce((s, e) => s + totalReal(e, m, 'TOTAL'), 0);
+  }
+  const ytdHist = Object.values(mesHist).reduce((s, v) => s + v, 0);
+  const tri1 = [1,2,3].reduce((s,m) => s + (mesHist[m]||0), 0);
+  const tri2 = [4,5,6].reduce((s,m) => s + (mesHist[m]||0), 0);
+  const tri3 = [7,8,9].reduce((s,m) => s + (mesHist[m]||0), 0);
+  const tri4 = [10,11,12].reduce((s,m) => s + (mesHist[m]||0), 0);
+
+  if (!dados.historico) dados.historico = {};
+  dados.historico[anoAtual] = { ytd: ytdHist, meses: mesHist, tri1, tri2, tri3, tri4 };
+
+  dados.executivos = dados.executivos.map(e => {
+    const n = JSON.parse(JSON.stringify(e));
+    for (let m = 1; m <= 12; m++) {
+      if (n.meses[m]) {
+        n.meses[m].EMP.real = 0;
+        n.meses[m].JUR.real = 0;
+        n.meses[m].OYS.real = 0;
+        if (!copiarMetas) {
+          n.meses[m].EMP.meta = 0;
+          n.meses[m].JUR.meta = 0;
+          n.meses[m].OYS.meta = 0;
+        }
+      }
+    }
+    if (!copiarMetas) n.meta = { EMP: 0, JUR: 0, OYS: 0 };
+    return n;
+  });
+
+  dados.forecast = [];
+  dados.anoAtivo = novoAno;
+  state.mes = 1;
+  salvar();
+  updateYearUI();
+  setView('dashboard');
+  toast(`Exercício ${novoAno} iniciado! Dados de ${anoAtual} salvos no histórico. 🎉`);
+}
+
+// =====================================================================
+// NAVIGATION
+// =====================================================================
+function setView(v) {
+  state.view = v;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.view === v));
+  const titles = {dashboard:'Dashboard',resultados:'Resultados por Mês',ranking:'Ranking de Executivos',forecast:'Forecast do Mês',historico:'Histórico & Comparativo Anual',dados:'Gerenciar Dados'};
+  document.getElementById('view-title').textContent = titles[v] || v;
+  destroyCharts();
+  renderView();
+}
+
+function setProduto(p) {
+  state.prod = p;
+  document.querySelectorAll('.produto-tab').forEach(el => el.classList.remove('active'));
+  const tabs = document.querySelectorAll('.produto-tab');
+  const idx = {TOTAL:0,EMP:1,JUR:2,OYS:3}[p];
+  if (tabs[idx]) tabs[idx].classList.add('active');
+  destroyCharts();
+  renderView();
+}
+
+function setMes(m) {
+  state.mes = parseInt(m);
+  document.getElementById('mes-select').value = m;
+  destroyCharts();
+  renderView();
+}
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch(e){} });
+  charts = {};
+}
+
+// =====================================================================
+// INLINE EDIT HELPERS
+// =====================================================================
+function startEdit(span, execId, mes, prod) {
+  const e = getExec(execId);
+  if (!e) return;
+  const val = getMes(e, mes)[prod].real;
+  const inp = document.createElement('input');
+  inp.type = 'number';
+  inp.step = '0.01';
+  inp.min = '0';
+  inp.className = 'edit-active';
+  inp.value = val.toFixed(2);
+  inp.style.width = Math.max(span.offsetWidth, 110) + 'px';
+  span.parentNode.replaceChild(inp, span);
+  inp.focus();
+  inp.select();
+  const commit = () => finishEdit(inp, execId, mes, prod, val);
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', ev => {
+    if (ev.key === 'Enter') { inp.removeEventListener('blur', commit); finishEdit(inp, execId, mes, prod, val); }
+    if (ev.key === 'Escape') { inp.removeEventListener('blur', commit); finishEdit(inp, execId, mes, prod, val, true); }
+  });
+}
+
+function finishEdit(inp, execId, mes, prod, origVal, cancel) {
+  const v = cancel ? origVal : (parseFloat(inp.value.replace(',', '.')) || 0);
+  const e = getExec(execId);
+  if (e && !cancel) { getMes(e, mes)[prod].real = v; salvar(); }
+  const span = document.createElement('span');
+  span.className = 'editable-val';
+  span.onclick = function() { startEdit(span, execId, mes, prod); };
+  span.textContent = R(cancel ? origVal : v);
+  if (inp.parentNode) inp.parentNode.replaceChild(span, inp);
+}
+
+function setSortResultados(s) {
+  state.sortResultados = s;
+  renderResultados();
+}
+
+// =====================================================================
+// VIEW: DASHBOARD
+// =====================================================================
+function renderDashboard() {
+  const m = state.mes;
+  const p = state.prod;
+  const execs = dados.executivos;
+
+  const metaTotal = execs.reduce((s, e) => s + totalMeta(e, m, p), 0);
+  const realTotal = execs.reduce((s, e) => s + totalReal(e, m, p), 0);
+  const pctTotal = pct(realTotal, metaTotal);
+  const acima = execs.filter(e => pct(totalReal(e,m,p), totalMeta(e,m,p)) >= 100).length;
+
+  const ytdM = execs.reduce((s, e) => s + ytdMeta(e, p, m), 0);
+  const ytdR = execs.reduce((s, e) => s + ytdReal(e, p, m), 0);
+  const pctYtd = pct(ytdR, ytdM);
+
+  const anoAnt = (dados.anoAtivo || 2026) - 1;
+  const histAnt = getHistAno(anoAnt);
+  const hist25 = histAnt.meses[m] || 0;
+  const vsAno = hist25 > 0 ? pct(realTotal, hist25) : 0;
+
+  const fcTotal = dados.forecast.reduce((s, f) => s + f.valor, 0);
+
+  const badgeMes = pctTotal >= 100 ? 'badge-green' : pctTotal >= 75 ? 'badge-yellow' : 'badge-red';
+  const badgeYtd = pctYtd >= 100 ? 'badge-green' : pctYtd >= 75 ? 'badge-yellow' : 'badge-red';
+
+  const html = `
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label">Meta ${MESES_NOMES[m]}</div>
+    <div class="kpi-value">${R(metaTotal)}</div>
+    <div class="kpi-sub">Realizado: ${R(realTotal)} <span class="badge ${badgeMes}">${pctTotal.toFixed(1)}%</span></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Acumulado (YTD)</div>
+    <div class="kpi-value">${R(ytdR)}</div>
+    <div class="kpi-sub">Meta YTD: ${R(ytdM)} <span class="badge ${badgeYtd}">${pctYtd.toFixed(1)}%</span></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">vs ${MESES_NOMES[m]}/${anoAnt}</div>
+    <div class="kpi-value">${R(hist25)}</div>
+    <div class="kpi-sub">Var. anual: <span class="badge ${vsAno >= 100 ? 'badge-green' : vsAno > 0 ? 'badge-yellow' : 'badge-red'}">${vsAno > 0 ? vsAno.toFixed(0)+'%' : 'N/D'}</span></div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Acima da Meta</div>
+    <div class="kpi-value">${acima} <span style="font-size:14px;font-weight:400;color:var(--text-secondary)">/ ${execs.filter(e=>totalMeta(e,m,p)>0).length}</span></div>
+    <div class="kpi-sub">Executivos acima de 100%</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Forecast (pipeline)</div>
+    <div class="kpi-value">${R(fcTotal)}</div>
+    <div class="kpi-sub">${dados.forecast.length} oportunidades mapeadas</div>
+  </div>
+</div>
+<div class="charts-grid">
+  <div class="chart-card">
+    <div class="chart-title">Meta vs Realizado — ${MESES_NOMES[m]}</div>
+    <div class="chart-wrap" style="height:260px"><canvas id="chart-bar"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">Evolução Mensal (Jan–${MESES_NOMES[m].substring(0,3)})</div>
+    <div class="chart-wrap" style="height:260px"><canvas id="chart-line"></canvas></div>
+  </div>
+</div>
+<div class="charts-grid" style="grid-template-columns:1fr 2fr">
+  <div class="chart-card">
+    <div class="chart-title">Distribuição por Produto</div>
+    <div class="chart-wrap" style="height:220px"><canvas id="chart-donut"></canvas></div>
+  </div>
+  <div class="section-card" style="margin-bottom:0">
+    <div class="section-head"><span class="section-head-title">Top 5 Ranking — ${MESES_NOMES[m]}</span></div>
+    <table class="dt">
+      <thead><tr><th>#</th><th>Executivo</th><th>Tipo</th><th class="right">Meta</th><th class="right">Realizado</th><th class="right">%</th></tr></thead>
+      <tbody>${renderTop5(m, p)}</tbody>
+    </table>
+  </div>
+</div>`;
+
+  document.getElementById('content-area').innerHTML = html;
+  document.getElementById('content-area').insertAdjacentHTML('beforeend', buildDashQuarterHtml(m, p));
+  buildBarChart(m, p);
+  buildLineChart(m, p);
+  buildDonutChart(m);
+}
+
+function renderTop5(m, p) {
+  const sorted = dados.executivos
+    .map(e => ({e, meta: totalMeta(e,m,p), real: totalReal(e,m,p)}))
+    .filter(x => x.meta > 0 || x.real > 0)
+    .sort((a,b) => pct(b.real,b.meta) - pct(a.real,a.meta))
+    .slice(0, 5);
+  return sorted.map((x, i) => {
+    const p2 = pct(x.real, x.meta);
+    const rCls = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-other';
+    return `<tr class="hoverable"><td><span class="rank-num ${rCls}">${i+1}</span></td><td>${x.e.nome}</td><td>${x.e.tipo}</td><td class="right">${R(x.meta)}</td><td class="right">${R(x.real)}</td><td class="right">${pctBadge(p2)}</td></tr>`;
+  }).join('');
+}
+
+function buildBarChart(m, p) {
+  const execs = dados.executivos.filter(e => totalMeta(e,m,p) > 0 || totalReal(e,m,p) > 0);
+  const ctx = document.getElementById('chart-bar');
+  if (!ctx) return;
+  charts.bar = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: execs.map(e => e.nome),
+      datasets: [
+        {label:'Meta', data: execs.map(e => totalMeta(e,m,p)), backgroundColor:'rgba(59,130,246,0.15)', borderColor:'#3b82f6', borderWidth:2},
+        {label:'Realizado', data: execs.map(e => totalReal(e,m,p)), backgroundColor:'rgba(16,185,129,0.7)', borderColor:'#059669', borderWidth:0}
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {legend:{position:'bottom', labels:{font:{size:11}}}, tooltip:{callbacks:{label: c => R(c.raw)}}},
+      scales: {x:{ticks:{font:{size:11}}}, y:{ticks:{callback: v => 'R$'+v.toLocaleString('pt-BR'), font:{size:11}}}}
+    }
+  });
+}
+
+function buildLineChart(m, p) {
+  const ctx = document.getElementById('chart-line');
+  if (!ctx) return;
+  const labels = Array.from({length: m}, (_,i) => MESES_NOMES[i+1].substring(0,3));
+  const metas = Array.from({length: m}, (_,i) => dados.executivos.reduce((s,e)=>s+totalMeta(e,i+1,p),0));
+  const reais = Array.from({length: m}, (_,i) => dados.executivos.reduce((s,e)=>s+totalReal(e,i+1,p),0));
+  charts.line = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {label:'Meta', data:metas, borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.1)', tension:0.3, fill:false, borderWidth:2, pointRadius:4},
+        {label:'Realizado', data:reais, borderColor:'#10b981', backgroundColor:'rgba(16,185,129,0.1)', tension:0.3, fill:false, borderWidth:2, pointRadius:4}
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:11}}}, tooltip:{callbacks:{label:c=>R(c.raw)}}},
+      scales:{y:{ticks:{callback:v=>'R$'+v.toLocaleString('pt-BR'),font:{size:11}}}}
+    }
+  });
+}
+
+function buildDonutChart(m) {
+  const ctx = document.getElementById('chart-donut');
+  if (!ctx) return;
+  const empR = dados.executivos.reduce((s,e)=>s+totalReal(e,m,'EMP'),0);
+  const jurR = dados.executivos.reduce((s,e)=>s+totalReal(e,m,'JUR'),0);
+  const oysR = dados.executivos.reduce((s,e)=>s+totalReal(e,m,'OYS'),0);
+  charts.donut = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Empresas','Jurimetria','Oystr'],
+      datasets: [{data:[empR,jurR,oysR], backgroundColor:['#3b82f6','#8b5cf6','#f59e0b'], borderWidth:0}]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:11}}}, tooltip:{callbacks:{label:c=>c.label+': '+R(c.raw)}}}
+    }
+  });
+}
+
+// =====================================================================
+// VIEW: RESULTADOS
+// =====================================================================
+function renderResultados() {
+  const m = state.mes;
+  const p = state.prod;
+  const sort = state.sortResultados || 'default';
+  let execs = [...dados.executivos];
+
+  if (sort === 'mrr') {
+    execs.sort((a,b) => totalReal(b,m,'TOTAL') - totalReal(a,m,'TOTAL'));
+  } else if (sort === 'pct') {
+    execs.sort((a,b) => pct(totalReal(b,m,p),totalMeta(b,m,p)) - pct(totalReal(a,m,p),totalMeta(a,m,p)));
+  } else if (sort === 'az') {
+    execs.sort((a,b) => a.nome.localeCompare(b.nome));
+  } else if (sort === 'tipo') {
+    execs.sort((a,b) => a.tipo === b.tipo ? a.nome.localeCompare(b.nome) : a.tipo === 'Canal' ? -1 : 1);
+  }
+
+  const sortLabels = {default:'Padrão', mrr:'↓ Maior MRR', pct:'↓ Maior %', az:'A–Z', tipo:'Canal / CLT'};
+  const sortBtns = Object.entries(sortLabels).map(([s, lbl]) =>
+    `<button class="sort-btn${sort===s?' active':''}" onclick="setSortResultados('${s}')">${lbl}</button>`
+  ).join('');
+
+  let rows = '';
+  execs.forEach(e => {
+    const md = getMes(e, m);
+    const tipoBg = e.tipo==='Canal' ? '#eff6ff' : '#f0fdf4';
+    const tipoCor = e.tipo==='Canal' ? '#1d4ed8' : '#166534';
+    const tipoTag = `<span style="font-size:11px;background:${tipoBg};color:${tipoCor};padding:2px 6px;border-radius:4px;font-weight:600">${e.tipo}</span>`;
+    if (p === 'TOTAL') {
+      const mt = md.EMP.meta + md.JUR.meta + md.OYS.meta;
+      const rt = md.EMP.real + md.JUR.real + md.OYS.real;
+      const pt = pct(rt, mt);
+      const gap = rt - mt;
+      rows += `<tr class="hoverable">
+        <td><strong>${e.nome}</strong></td><td>${tipoTag}</td>
+        <td class="right col-emp">${R(md.EMP.meta)}</td>
+        <td class="right col-emp-end"><span class="editable-val" onclick="startEdit(this,'${e.id}',${m},'EMP')">${R(md.EMP.real)}</span></td>
+        <td class="right col-jur">${R(md.JUR.meta)}</td>
+        <td class="right col-jur-end"><span class="editable-val" onclick="startEdit(this,'${e.id}',${m},'JUR')">${R(md.JUR.real)}</span></td>
+        <td class="right col-oys">${R(md.OYS.meta)}</td>
+        <td class="right col-oys-end"><span class="editable-val" onclick="startEdit(this,'${e.id}',${m},'OYS')">${R(md.OYS.real)}</span></td>
+        <td class="right"><strong>${R(mt)}</strong></td>
+        <td class="right"><strong>${R(rt)}</strong></td>
+        <td class="right">${pctBadge(pt)}</td>
+        <td class="right" style="color:${gap>=0?'#10b981':'#ef4444'};font-weight:600">${gap>=0?'+':''}${R(gap)}</td>
+      </tr>`;
+    } else {
+      const prodData = md[p];
+      const pt = pct(prodData.real, prodData.meta);
+      const gap = prodData.real - prodData.meta;
+      rows += `<tr class="hoverable">
+        <td><strong>${e.nome}</strong></td><td>${tipoTag}</td>
+        <td class="right">${R(prodData.meta)}</td>
+        <td class="right"><span class="editable-val" onclick="startEdit(this,'${e.id}',${m},'${p}')">${R(prodData.real)}</span></td>
+        <td class="right">${pctBadge(pt)}</td>
+        <td class="right" style="color:${gap>=0?'#10b981':'#ef4444'};font-weight:600">${gap>=0?'+':''}${R(gap)}</td>
+      </tr>`;
+    }
+  });
+
+  const sumMetaEMP = dados.executivos.reduce((s,e)=>s+getMes(e,m).EMP.meta,0);
+  const sumRealEMP = dados.executivos.reduce((s,e)=>s+getMes(e,m).EMP.real,0);
+  const sumMetaJUR = dados.executivos.reduce((s,e)=>s+getMes(e,m).JUR.meta,0);
+  const sumRealJUR = dados.executivos.reduce((s,e)=>s+getMes(e,m).JUR.real,0);
+  const sumMetaOYS = dados.executivos.reduce((s,e)=>s+getMes(e,m).OYS.meta,0);
+  const sumRealOYS = dados.executivos.reduce((s,e)=>s+getMes(e,m).OYS.real,0);
+  const sumMeta = sumMetaEMP+sumMetaJUR+sumMetaOYS;
+  const sumReal = sumRealEMP+sumRealJUR+sumRealOYS;
+
+  let totalRow = '';
+  if (p === 'TOTAL') {
+    totalRow = `<tr class="total-row">
+      <td>TOTAL</td><td></td>
+      <td class="right col-emp">${R(sumMetaEMP)}</td><td class="right col-emp-end">${R(sumRealEMP)}</td>
+      <td class="right col-jur">${R(sumMetaJUR)}</td><td class="right col-jur-end">${R(sumRealJUR)}</td>
+      <td class="right col-oys">${R(sumMetaOYS)}</td><td class="right col-oys-end">${R(sumRealOYS)}</td>
+      <td class="right">${R(sumMeta)}</td><td class="right">${R(sumReal)}</td>
+      <td class="right">${pctBadge(pct(sumReal,sumMeta))}</td>
+      <td class="right">${R(sumReal-sumMeta)}</td>
+    </tr>`;
+  } else {
+    const sm = p==='EMP'?sumMetaEMP:p==='JUR'?sumMetaJUR:sumMetaOYS;
+    const sr = p==='EMP'?sumRealEMP:p==='JUR'?sumRealJUR:sumRealOYS;
+    totalRow = `<tr class="total-row"><td>TOTAL</td><td></td><td class="right">${R(sm)}</td><td class="right">${R(sr)}</td><td class="right">${pctBadge(pct(sr,sm))}</td><td class="right">${R(sr-sm)}</td></tr>`;
+  }
+
+  let thead = '';
+  if (p === 'TOTAL') {
+    thead = `<tr>
+      <th rowspan="2">Executivo</th><th rowspan="2">Tipo</th>
+      <th colspan="2" class="grp-head-emp">Empresas</th>
+      <th colspan="2" class="grp-head-jur">Jurimetria</th>
+      <th colspan="2" class="grp-head-oys">Oystr</th>
+      <th rowspan="2" class="right">Meta Total</th>
+      <th rowspan="2" class="right">Realizado</th>
+      <th rowspan="2" class="right">%</th>
+      <th rowspan="2" class="right">Gap</th>
+    </tr><tr>
+      <th class="right col-emp" style="background:#eff6ff;font-size:10px">Meta</th>
+      <th class="right col-emp-end" style="background:#eff6ff;font-size:10px">Realizado</th>
+      <th class="right col-jur" style="background:#f3e8ff;font-size:10px">Meta</th>
+      <th class="right col-jur-end" style="background:#f3e8ff;font-size:10px">Realizado</th>
+      <th class="right col-oys" style="background:#fef3c7;font-size:10px">Meta</th>
+      <th class="right col-oys-end" style="background:#fef3c7;font-size:10px">Realizado</th>
+    </tr>`;
+  } else {
+    const pNome = {EMP:'Empresas',JUR:'Jurimetria',OYS:'Oystr'}[p];
+    thead = `<tr><th>Executivo</th><th>Tipo</th><th class="right">Meta ${pNome}</th><th class="right">Realizado</th><th class="right">%</th><th class="right">Gap</th></tr>`;
+  }
+
+  document.getElementById('content-area').innerHTML = `
+<div class="section-card">
+  <div class="section-head">
+    <span class="section-head-title">Resultados — ${MESES_NOMES[m]} ${dados.anoAtivo||2026}</span>
+    <span style="font-size:12px;color:var(--text-secondary)">Clique no valor realizado para editar</span>
+  </div>
+  <div class="sort-bar"><span class="sort-lbl">Ordenar:</span>${sortBtns}</div>
+  <div style="overflow-x:auto">
+    <table class="dt"><thead>${thead}</thead><tbody>${rows}${totalRow}</tbody></table>
+  </div>
+</div>
+${buildQTrimestralHtml(m, p, execs)}`;
+}
+
+function updateReal(execId, mes, prod, val) {
+  const v = parseFloat(val.replace(',', '.')) || 0;
+  const e = getExec(execId);
+  if (!e) return;
+  getMes(e, mes)[prod].real = v;
+  salvar();
+  document.getElementById('save-dot').textContent = '● Salvo';
+}
+
+// =====================================================================
+// VIEW: RANKING
+// =====================================================================
+function renderRanking() {
+  const m = state.mes;
+  const p = state.prod;
+  const execs = dados.executivos;
+
+  const ranked = execs
+    .map(e => {
+      const yM = ytdMeta(e, p, m);
+      const yR = ytdReal(e, p, m);
+      const yP = pct(yR, yM);
+      const gap = yR - yM;
+      return {e, ytdM:yM, ytdR:yR, ytdP:yP, gap};
+    })
+    .filter(x => x.ytdM > 0 || x.ytdR > 0)
+    .sort((a, b) => b.ytdP - a.ytdP);
+
+  const gold  = ranked.filter(x => x.ytdP >= 100);
+  const alert = ranked.filter(x => x.ytdP >= 75 && x.ytdP < 100);
+  const build = ranked.filter(x => x.ytdP < 75);
+
+  function cardHtml(x, globalIdx) {
+    const medals = ['🥇','🥈','🥉'];
+    const posEl = globalIdx < 3
+      ? `<div class="rank-medal-big">${medals[globalIdx]}</div>`
+      : `<div class="rank-num-circle">${globalIdx+1}</div>`;
+    const cardCls = globalIdx===0 ? 'rank-card rank-gold' : globalIdx===1 ? 'rank-card rank-silver' : globalIdx===2 ? 'rank-card rank-bronze' : 'rank-card';
+    const fillCls = x.ytdP >= 100 ? 'fill-high' : x.ytdP >= 75 ? 'fill-mid' : 'fill-low';
+    const barW = Math.min(x.ytdP, 100).toFixed(1);
+    const pctColor = x.ytdP >= 100 ? '#10b981' : x.ytdP >= 75 ? '#f59e0b' : '#ef4444';
+    const gapColor = x.gap >= 0 ? '#10b981' : '#ef4444';
+    const tipoBg = x.e.tipo==='Canal' ? '#eff6ff' : '#f0fdf4';
+    const tipoCor = x.e.tipo==='Canal' ? '#1d4ed8' : '#166534';
+    return `<div class="${cardCls}">
+      ${posEl}
+      <div>
+        <div class="rank-card-name">${x.e.nome} <span style="font-size:11px;background:${tipoBg};color:${tipoCor};padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:600">${x.e.tipo}</span></div>
+        <div class="rank-card-sub">${R(x.ytdR)} <span style="color:var(--text-secondary)">de ${R(x.ytdM)} de meta</span></div>
+        <div class="rank-progress-track"><div class="rank-progress-fill ${fillCls}" style="width:${barW}%"></div></div>
+      </div>
+      <div class="rank-card-stats">
+        <div class="rank-stat-pct" style="color:${pctColor}">${x.ytdP.toFixed(1)}%</div>
+        <div class="rank-stat-sub">da meta</div>
+      </div>
+      <div class="rank-card-gap" style="color:${gapColor}">${x.gap>=0?'+':''}${R(x.gap)}</div>
+    </div>`;
+  }
+
+  function zone(items, startIdx, title, chipCls, emoji) {
+    if (items.length === 0) return '';
+    return `<div class="zone-divider"><span class="zone-chip ${chipCls}">${emoji} ${title}</span><span class="zone-line"></span></div>
+<div class="rank-cards">${items.map((x,i) => cardHtml(x, startIdx+i)).join('')}</div>`;
+  }
+
+  const totalYtdM = ranked.reduce((s,x)=>s+x.ytdM,0);
+  const totalYtdR = ranked.reduce((s,x)=>s+x.ytdR,0);
+  const anoAt = dados.anoAtivo || 2026;
+  const anoAntR = anoAt - 1;
+  const histAntR = getHistAno(anoAntR);
+  const ytd25 = histAntR.ytd;
+  const mesR26 = execs.reduce((s,e)=>s+totalReal(e,m,'TOTAL'),0);
+  const mesR25 = histAntR.meses[m] || 0;
+
+  document.getElementById('content-area').innerHTML = `
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+  <div>
+    <div style="font-size:13px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px">Ranking YTD — Jan a ${MESES_NOMES[m]}</div>
+    <div style="font-size:11px;color:var(--text-secondary);margin-top:2px">${ranked.length} executivos · ordenado por % acumulado</div>
+  </div>
+  <div style="text-align:right">
+    ${pctBadge(pct(totalYtdR,totalYtdM))}
+    <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">${R(totalYtdR)} / ${R(totalYtdM)}</div>
+  </div>
+</div>
+${zone(gold,  0,                   'Zona de Ouro',  'chip-gold',  '⚡')}
+${zone(alert, gold.length,         'Zona de Alerta','chip-alert', '🔥')}
+${zone(build, gold.length+alert.length, 'Em Construção','chip-build','⚒')}
+<div class="section-card" style="margin-top:16px">
+  <div class="section-head"><span class="section-head-title">Comparativo ${anoAntR} vs ${anoAt}</span></div>
+  <div class="hist-grid">
+    <div class="hist-item">
+      <div class="hist-label">YTD (Jan–${MESES_NOMES[m].substring(0,3)})</div>
+      <div class="hist-vals">
+        <div class="hist-val"><div class="hist-year">${anoAntR}</div><div class="hist-num" style="color:#64748b">${R(ytd25)}</div></div>
+        <div style="align-self:center;font-size:20px">→</div>
+        <div class="hist-val"><div class="hist-year">${anoAt}</div><div class="hist-num" style="color:#0f172a">${R(totalYtdR)}</div></div>
+      </div>
+      <div class="hist-pct">${pctBadge(pct(totalYtdR,ytd25))}</div>
+    </div>
+    <div class="hist-item">
+      <div class="hist-label">${MESES_NOMES[m]} isolado</div>
+      <div class="hist-vals">
+        <div class="hist-val"><div class="hist-year">${anoAntR}</div><div class="hist-num" style="color:#64748b">${R(mesR25)}</div></div>
+        <div style="align-self:center;font-size:20px">→</div>
+        <div class="hist-val"><div class="hist-year">${anoAt}</div><div class="hist-num" style="color:#0f172a">${R(mesR26)}</div></div>
+      </div>
+      <div class="hist-pct">${mesR25>0?pctBadge(pct(mesR26,mesR25)):'<span class="badge badge-yellow">N/D</span>'}</div>
+    </div>
+    <div class="hist-item">
+      <div class="hist-label">1º Trimestre</div>
+      <div class="hist-vals">
+        <div class="hist-val"><div class="hist-year">${anoAntR}</div><div class="hist-num" style="color:#64748b">${R(histAntR.tri1)}</div></div>
+        <div style="align-self:center;font-size:20px">→</div>
+        <div class="hist-val"><div class="hist-year">${anoAt}</div><div class="hist-num" style="color:#0f172a">${R(execs.reduce((s,e)=>{for(let i=1;i<=3;i++)s+=totalReal(e,i,'TOTAL');return s;},0))}</div></div>
+      </div>
+    </div>
+    <div class="hist-item">
+      <div class="hist-label">2º Trimestre</div>
+      <div class="hist-vals">
+        <div class="hist-val"><div class="hist-year">${anoAntR}</div><div class="hist-num" style="color:#64748b">${R(histAntR.tri2)}</div></div>
+        <div style="align-self:center;font-size:20px">→</div>
+        <div class="hist-val"><div class="hist-year">${anoAt}</div><div class="hist-num" style="color:#0f172a">${R(execs.reduce((s,e)=>{for(let i=4;i<=6;i++)s+=totalReal(e,i,'TOTAL');return s;},0))}</div></div>
+      </div>
+    </div>
+  </div>
+</div>`;
+}
+
+// =====================================================================
+// VIEW: HISTÓRICO
+// =====================================================================
+function renderHistorico() {
+  const m = state.mes;
+  const execs = dados.executivos;
+  const anoAt = dados.anoAtivo || 2026;
+  const anoAntH = anoAt - 1;
+  const histAntH = getHistAno(anoAntH);
+
+  const r26 = mo => execs.reduce((s,e) => s + totalReal(e, mo, 'TOTAL'), 0);
+
+  const mesRows = Array.from({length:12}, (_,i) => i+1).map(mo => {
+    const r25 = histAntH.meses[mo] || 0;
+    const r2026 = r26(mo);
+    const noData26 = r2026 === 0 && mo > m;
+    const diff = r2026 - r25;
+    const varPct = r25 > 0 && !noData26 ? pct(r2026, r25) : null;
+    const rowAttr = mo === m ? ' style="background:#eff6ff"' : '';
+    const moTag = mo === m ? ' <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:3px;font-weight:700">ATUAL</span>' : '';
+    return `<tr class="hoverable"${rowAttr}>
+      <td>${MESES_NOMES[mo]}${moTag}</td>
+      <td class="right">${r25 > 0 ? R(r25) : '<span style="color:var(--text-secondary)">—</span>'}</td>
+      <td class="right">${noData26 ? '<span style="color:var(--text-secondary)">—</span>' : R(r2026)}</td>
+      <td class="right" style="color:${diff>=0?'#10b981':'#ef4444'}">${r25>0&&!noData26 ? (diff>=0?'+':'')+R(diff) : '<span style="color:var(--text-secondary)">—</span>'}</td>
+      <td class="right">${varPct !== null ? pctBadge(varPct) : '<span style="color:var(--text-secondary)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  const ytd26 = execs.reduce((s,e) => s + ytdReal(e, 'TOTAL', m), 0);
+  const ytd25 = histAntH.ytd;
+  const q2025 = {1: histAntH.tri1, 2: histAntH.tri2, 3: histAntH.tri3||0, 4: histAntH.tri4||0};
+
+  const qRows = [1,2,3,4].map(q => {
+    const qMeta = teamQMeta(q, 'TOTAL');
+    const qReal = teamQReal(q, 'TOTAL');
+    const qP = pct(qReal, qMeta);
+    const q25 = q2025[q] != null ? q2025[q] : null;
+    const vs25 = (q25 != null && q25 > 0) ? pct(qReal, q25) : null;
+    const isCurr = q === getQuarter(m);
+    const qMonsLbl = quarterMonths(q).map(mo => MESES_NOMES[mo].substring(0,3)).join('+');
+    const currTag = isCurr ? ' <span style="font-size:9px;background:#dbeafe;color:#1d4ed8;padding:1px 5px;border-radius:3px;font-weight:700">ATUAL</span>' : '';
+    return `<tr class="hoverable"${isCurr?' style="background:#eff6ff"':''}>
+      <td><strong>Q${q}</strong> <span style="color:var(--text-secondary);font-size:12px">${qMonsLbl}</span>${currTag}</td>
+      <td class="right">${R(qMeta)}</td>
+      <td class="right">${R(qReal)}</td>
+      <td class="right">${pctBadge(qP)}</td>
+      <td class="right">${q25 ? R(q25) : '<span style="color:var(--text-secondary)">N/D</span>'}</td>
+      <td class="right">${vs25 !== null ? pctBadge(vs25) : '<span style="color:var(--text-secondary)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('content-area').innerHTML = `
+<div style="display:grid;grid-template-columns:3fr 1fr;gap:14px;margin-bottom:14px;align-items:start">
+  <div class="section-card" style="margin-bottom:0">
+    <div class="section-head">
+      <span class="section-head-title">Mês a Mês — ${anoAntH} vs ${anoAt}</span>
+      <span style="font-size:12px;color:var(--text-secondary)">Total todos os produtos</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="dt">
+        <thead><tr><th>Mês</th><th class="right">${anoAntH}</th><th class="right">${anoAt}</th><th class="right">Variação</th><th class="right">% vs ${anoAntH}</th></tr></thead>
+        <tbody>${mesRows}</tbody>
+      </table>
+    </div>
+  </div>
+  <div class="section-card" style="margin-bottom:0">
+    <div class="section-head"><span class="section-head-title">Acumulado YTD</span></div>
+    <div style="padding:20px 20px 24px">
+      <div style="margin-bottom:20px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-secondary);margin-bottom:6px">Jan–${MESES_NOMES[m].substring(0,3)} ${anoAt}</div>
+        <div style="font-size:26px;font-weight:800;line-height:1">${R(ytd26)}</div>
+        <div style="margin-top:8px">${pctBadge(pct(ytd26, ytd25))}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-top:6px">vs ${R(ytd25)} em ${anoAntH}</div>
+      </div>
+      <div style="padding-top:16px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--text-secondary);font-weight:600;margin-bottom:4px">Diferença</div>
+        <div style="font-size:20px;font-weight:800;color:${ytd26-ytd25>=0?'#10b981':'#ef4444'}">${ytd26-ytd25>=0?'+':''}${R(ytd26-ytd25)}</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="section-card">
+  <div class="section-head">
+    <span class="section-head-title">Metas Trimestrais — ${anoAt} vs ${anoAntH}</span>
+    <span style="font-size:12px;color:var(--text-secondary)">Bônus trimestrais · total todos os produtos</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="dt">
+      <thead><tr>
+        <th>Trimestre</th>
+        <th class="right">Meta ${anoAt}</th><th class="right">Realizado ${anoAt}</th><th class="right">% da Meta</th>
+        <th class="right">${anoAntH} Realizado</th><th class="right">% vs ${anoAntH}</th>
+      </tr></thead>
+      <tbody>${qRows}</tbody>
+    </table>
+  </div>
+</div>`;
+}
+
+// =====================================================================
+// VIEW: FORECAST
+// =====================================================================
+function renderForecast() {
+  const execs = dados.executivos;
+  const all   = dados.forecast;
+  const openFc = all.filter(f => !f.status || f.status === 'open');
+  const wonFc  = all.filter(f => f.status === 'won');
+  const lostFc = all.filter(f => f.status === 'lost');
+
+  const totalOpen    = openFc.reduce((s,f) => s + f.valor, 0);
+  const totalWonReal = wonFc.reduce((s,f) => s + (f.valorGanho || f.valor), 0);
+  const totalWonEst  = wonFc.reduce((s,f) => s + f.valor, 0);
+  const totalLost    = lostFc.reduce((s,f) => s + f.valor, 0);
+  const decided      = wonFc.length + lostFc.length;
+  const convRate     = decided > 0 ? (wonFc.length / decided * 100) : 0;
+
+  // Group items by exec
+  const byExec = {};
+  execs.forEach(e => { byExec[e.id] = {exec:e, items:[]}; });
+  all.forEach(f => { if (byExec[f.exec]) byExec[f.exec].items.push(f); });
+
+  let itemsHtml = '';
+  Object.values(byExec).forEach(({exec, items}) => {
+    if (!items.length) return;
+    const tipoBg  = exec.tipo==='Canal' ? '#eff6ff' : '#f0fdf4';
+    const tipoCor = exec.tipo==='Canal' ? '#1d4ed8' : '#166534';
+    const execWon = items.filter(f=>f.status==='won').reduce((s,f)=>s+(f.valorGanho||f.valor),0);
+    const execTot = items.reduce((s,f)=>s+f.valor,0);
+    itemsHtml += `<div class="fc-group">
+      <div class="fc-header">
+        <div class="fc-exec-name">${exec.nome} <span style="font-size:11px;background:${tipoBg};color:${tipoCor};padding:1px 6px;border-radius:4px;margin-left:6px">${exec.tipo}</span></div>
+        <div class="fc-exec-total">${items.length} oport. · <strong>${R(execTot)}</strong>${execWon>0?` · <span style="color:#10b981;font-weight:600">🏆 ${R(execWon)}</span>`:''}</div>
+      </div>
+      <div class="fc-items">`;
+    items.forEach(f => {
+      const d = f.data ? new Date(f.data).toLocaleDateString('pt-BR') : '—';
+      const isWon  = f.status === 'won';
+      const isLost = f.status === 'lost';
+      const rowCls = isWon ? ' fc-won' : isLost ? ' fc-lost' : '';
+      const gestorTag = f.gestor ? `<span style="font-size:11px;color:var(--text-secondary)"> · ${f.gestor}</span>` : '';
+      const statusTag = isWon  ? `<span class="fc-status-tag fc-tag-won">🏆 GANHO</span>`
+                      : isLost ? `<span class="fc-status-tag fc-tag-lost">✗ PERDIDO</span>` : '';
+      const valorHtml = isWon && f.valorGanho && f.valorGanho !== f.valor
+        ? `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px">
+             <span style="font-size:11px;text-decoration:line-through;color:var(--text-secondary)">${R(f.valor)}</span>
+             <span style="font-weight:700;color:#10b981">${R(f.valorGanho)}</span>
+           </div>`
+        : `<div class="fc-valor" style="${isLost?'text-decoration:line-through;color:var(--text-secondary)':''}">${R(f.valor)}</div>`;
+      const actionBtns = (isWon || isLost)
+        ? `<button class="fc-action-btn fc-reopen" onclick="reabrirFc(${f.id})" title="Reabrir">↺</button>`
+        : `<button class="fc-action-btn fc-win"  onclick="openGanhoModal(${f.id})" title="Marcar ganho">🏆</button>
+           <button class="fc-action-btn fc-lose" onclick="marcarPerdido(${f.id})" title="Marcar perdido">✗</button>`;
+      itemsHtml += `<div class="fc-item${rowCls}">
+        <div class="fc-empresa">${f.empresa}${gestorTag}${statusTag}</div>
+        ${valorHtml}
+        <div class="fc-data">📅 ${d}</div>
+        ${actionBtns}
+        <button class="fc-del" onclick="delFc(${f.id})" title="Remover">×</button>
+      </div>`;
+    });
+    itemsHtml += `</div></div>`;
+  });
+
+  // ---- Summary: Por Gestor Comercial ----
+  const gestorMap = {};
+  all.forEach(f => {
+    const exec = getExec(f.exec);
+    if (!exec) return;
+    const key = f.gestor ? f.gestor : exec.nome;
+    if (!gestorMap[key]) gestorMap[key] = {tipo:exec.tipo, canal:exec.tipo==='Canal'?exec.nome:'—', f:0, w:0, l:0, nW:0, nL:0};
+    gestorMap[key].f += f.valor;
+    if (f.status==='won')  { gestorMap[key].w += (f.valorGanho||f.valor); gestorMap[key].nW++; }
+    if (f.status==='lost') { gestorMap[key].l += f.valor; gestorMap[key].nL++; }
+  });
+  const gestorRows = Object.entries(gestorMap).sort((a,b)=>b[1].w-a[1].w).map(([nome,g]) => {
+    const taxa = (g.nW+g.nL)>0 ? g.nW/(g.nW+g.nL)*100 : null;
+    const tipoBg  = g.tipo==='Canal' ? '#eff6ff' : '#f0fdf4';
+    const tipoCor = g.tipo==='Canal' ? '#1d4ed8' : '#166534';
+    const tipoLbl = g.tipo==='Canal' ? `Canal: ${g.canal}` : 'CLT';
+    return `<tr class="hoverable">
+      <td><strong>${nome}</strong></td>
+      <td><span style="font-size:11px;background:${tipoBg};color:${tipoCor};padding:2px 6px;border-radius:4px;font-weight:600">${tipoLbl}</span></td>
+      <td class="right">${R(g.f)}</td>
+      <td class="right" style="color:#10b981;font-weight:600">${g.w>0?R(g.w):'—'}</td>
+      <td class="right" style="color:#ef4444">${g.l>0?R(g.l):'—'}</td>
+      <td class="right">${taxa!==null?pctBadge(taxa):'—'}</td>
+    </tr>`;
+  }).join('');
+
+  // ---- Summary: Por Canal ----
+  const canalMap = {};
+  all.forEach(f => {
+    const exec = getExec(f.exec);
+    if (!exec || exec.tipo !== 'Canal') return;
+    if (!canalMap[exec.id]) canalMap[exec.id] = {nome:exec.nome, f:0, w:0, l:0, nOpen:0, nW:0, nL:0};
+    canalMap[exec.id].f += f.valor;
+    if (f.status==='won')       { canalMap[exec.id].w += (f.valorGanho||f.valor); canalMap[exec.id].nW++; }
+    else if (f.status==='lost') { canalMap[exec.id].l += f.valor; canalMap[exec.id].nL++; }
+    else canalMap[exec.id].nOpen++;
+  });
+  const canalRows = Object.values(canalMap).sort((a,b)=>b.w-a.w).map(c => {
+    const taxa = (c.nW+c.nL)>0 ? c.nW/(c.nW+c.nL)*100 : null;
+    return `<tr class="hoverable">
+      <td><strong>${c.nome}</strong></td>
+      <td class="right">${c.nOpen}</td>
+      <td class="right">${R(c.f)}</td>
+      <td class="right" style="color:#10b981;font-weight:600">${c.w>0?R(c.w):'—'}</td>
+      <td class="right" style="color:#ef4444">${c.l>0?R(c.l):'—'}</td>
+      <td class="right">${taxa!==null?pctBadge(taxa):'—'}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('content-area').innerHTML = `
+<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+  <div class="kpi-card">
+    <div class="kpi-label">Em Aberto</div>
+    <div class="kpi-value" style="font-size:20px">${R(totalOpen)}</div>
+    <div class="kpi-sub">${openFc.length} oportunidades</div>
+  </div>
+  <div class="kpi-card" style="border-color:#10b981">
+    <div class="kpi-label" style="color:#10b981">Ganhos</div>
+    <div class="kpi-value" style="font-size:20px;color:#10b981">${R(totalWonReal)}</div>
+    <div class="kpi-sub">${wonFc.length} fechamentos${totalWonReal!==totalWonEst?` · est. ${R(totalWonEst)}`:''}</div>
+  </div>
+  <div class="kpi-card" style="border-color:#ef4444">
+    <div class="kpi-label" style="color:#ef4444">Perdidos</div>
+    <div class="kpi-value" style="font-size:20px;color:#ef4444">${R(totalLost)}</div>
+    <div class="kpi-sub">${lostFc.length} oportunidades perdidas</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Taxa de Conversão</div>
+    <div class="kpi-value" style="font-size:22px">${convRate.toFixed(1)}%</div>
+    <div class="kpi-sub">${wonFc.length} ganhos de ${decided} decididos</div>
+  </div>
+</div>
+
+<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+  <button class="btn btn-primary" onclick="openFcModal()">+ Adicionar Oportunidade</button>
+</div>
+
+<div class="section-card" style="margin-bottom:14px">
+  ${itemsHtml || '<div class="empty-state"><p>Nenhuma oportunidade no forecast.</p></div>'}
+</div>
+
+${(gestorRows || canalRows) ? `<div class="fc-summary-grid">
+  <div class="section-card" style="margin-bottom:0">
+    <div class="section-head"><span class="section-head-title">Por Gestor Comercial</span></div>
+    <div style="overflow-x:auto"><table class="dt">
+      <thead><tr><th>Gestor</th><th>Tipo</th><th class="right">Forecast</th><th class="right">Ganhos</th><th class="right">Perdidos</th><th class="right">Taxa</th></tr></thead>
+      <tbody>${gestorRows||'<tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:16px">Sem dados</td></tr>'}</tbody>
+    </table></div>
+  </div>
+  <div class="section-card" style="margin-bottom:0">
+    <div class="section-head"><span class="section-head-title">Por Canal</span></div>
+    <div style="overflow-x:auto"><table class="dt">
+      <thead><tr><th>Canal</th><th class="right">Em aberto</th><th class="right">Forecast</th><th class="right">Ganhos</th><th class="right">Perdidos</th><th class="right">Taxa</th></tr></thead>
+      <tbody>${canalRows||'<tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:16px">Sem dados de Canal</td></tr>'}</tbody>
+    </table></div>
+  </div>
+</div>` : ''}`;
+}
+
+function onExecChange() {
+  const execId = document.getElementById('fc-exec').value;
+  const e = getExec(execId);
+  const row = document.getElementById('fc-gestor-row');
+  if (row) row.style.display = (e && e.tipo === 'Canal') ? '' : 'none';
+}
+
+function openFcModal() {
+  const sel = document.getElementById('fc-exec');
+  sel.innerHTML = dados.executivos.map(e => `<option value="${e.id}">${e.nome} (${e.tipo})</option>`).join('');
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('fc-data').value = today;
+  document.getElementById('fc-empresa-input').value = '';
+  document.getElementById('fc-valor').value = '';
+  document.getElementById('fc-gestor').value = '';
+  onExecChange();
+  document.getElementById('modal-fc').classList.add('open');
+}
+
+function saveFc() {
+  const exec = document.getElementById('fc-exec').value;
+  const empresa = document.getElementById('fc-empresa-input').value.trim();
+  const valor = parseFloat(document.getElementById('fc-valor').value) || 0;
+  const data = document.getElementById('fc-data').value;
+  const gestor = document.getElementById('fc-gestor').value.trim();
+  if (!empresa || valor <= 0) { toast('Preencha empresa e valor.'); return; }
+  dados.forecast.push({id: state.nextFcId++, exec, empresa, valor, data, gestor, status:'open', valorGanho:0});
+  salvar();
+  closeModal();
+  renderForecast();
+  toast('Oportunidade adicionada!');
+}
+
+function delFc(id) {
+  dados.forecast = dados.forecast.filter(f => f.id !== id);
+  salvar();
+  renderForecast();
+}
+
+let _ganhoId = null;
+function openGanhoModal(id) {
+  const fc = dados.forecast.find(f => f.id === id);
+  if (!fc) return;
+  _ganhoId = id;
+  document.getElementById('ganho-empresa-label').textContent = fc.empresa;
+  document.getElementById('ganho-estimado-label').textContent = 'Estimado: ' + R(fc.valor);
+  document.getElementById('ganho-valor').value = (fc.valorGanho || fc.valor).toFixed(2);
+  document.getElementById('modal-ganho').classList.add('open');
+}
+
+function closeGanhoModal() {
+  document.getElementById('modal-ganho').classList.remove('open');
+  _ganhoId = null;
+}
+
+function confirmarGanho() {
+  if (_ganhoId === null) return;
+  const fc = dados.forecast.find(f => f.id === _ganhoId);
+  if (!fc) return;
+  const v = parseFloat(document.getElementById('ganho-valor').value) || 0;
+  if (v <= 0) { toast('Informe o valor real fechado.'); return; }
+  fc.status = 'won';
+  fc.valorGanho = v;
+  salvar();
+  closeGanhoModal();
+  renderForecast();
+  toast('Venda marcada como ganha! 🏆');
+}
+
+function marcarPerdido(id) {
+  const fc = dados.forecast.find(f => f.id === id);
+  if (!fc) return;
+  fc.status = 'lost';
+  salvar();
+  renderForecast();
+  toast('Oportunidade marcada como perdida.');
+}
+
+function reabrirFc(id) {
+  const fc = dados.forecast.find(f => f.id === id);
+  if (!fc) return;
+  fc.status = 'open';
+  fc.valorGanho = 0;
+  salvar();
+  renderForecast();
+  toast('Oportunidade reaberta.');
+}
+
+function closeModal() {
+  document.getElementById('modal-fc').classList.remove('open');
+}
+
+// =====================================================================
+// VIEW: DADOS
+// =====================================================================
+function renderDados() {
+  const cfg = getM365Config();
+  const isConnected = !!_m365Account;
+  document.getElementById('content-area').innerHTML = `
+<div class="config-section">
+  <h3>☁ Microsoft 365 — Sincronização com SharePoint</h3>
+  ${isConnected
+    ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
+        <span style="font-size:16px">✓</span>
+        <div><strong style="color:#166534">${_m365Account.username}</strong><br><span style="font-size:12px;color:#166534">Conectado — dados sincronizados automaticamente a cada save</span></div>
+        <button class="btn btn-outline btn-sm" onclick="m365Logout()" style="margin-left:auto">Desconectar</button>
+       </div>`
+    : `<p style="margin-bottom:10px">Configure as credenciais abaixo (fornecidas pelo T.I) e clique em <strong>Conectar</strong>. Após isso, todos os dados são sincronizados automaticamente com o SharePoint — qualquer pessoa da equipe que abrir o painel verá os dados atualizados.</p>`
+  }
+  <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+    <div>
+      <label class="form-label">Client ID (Application ID)</label>
+      <input class="form-input" id="m365-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value="${cfg.clientId}">
+    </div>
+    <div>
+      <label class="form-label">Tenant ID (Directory ID)</label>
+      <input class="form-input" id="m365-tenant-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" value="${cfg.tenantId}">
+    </div>
+  </div>
+  <div class="form-row" style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px">
+    <div>
+      <label class="form-label">URL do Site SharePoint</label>
+      <input class="form-input" id="m365-site-url" placeholder="https://starian.sharepoint.com/sites/comercial" value="${cfg.siteUrl}">
+    </div>
+    <div>
+      <label class="form-label">Nome do arquivo JSON</label>
+      <input class="form-input" id="m365-file-path" placeholder="meta-dados.json" value="${cfg.filePath || 'meta-dados.json'}">
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-outline" onclick="saveM365Config()">💾 Salvar configuração</button>
+    ${!isConnected
+      ? `<button class="btn btn-primary" onclick="m365Login()">🔑 Entrar com Microsoft 365</button>`
+      : `<button class="btn btn-success" onclick="syncFromM365()">↓ Carregar dados do SharePoint</button>
+         <button class="btn btn-outline" onclick="syncToM365()">↑ Enviar dados para SharePoint</button>`
+    }
+  </div>
+</div>
+<div class="config-section">
+  <h3>💾 Exportar / Importar Dados</h3>
+  <p>Exporte os dados para compartilhar com o time via OneDrive. Qualquer pessoa com o arquivo JSON pode importar e ver os dados atualizados.</p>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="exportarJSON()">⬇ Exportar dados (.json)</button>
+    <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">⬆ Importar dados (.json)</button>
+  </div>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarJSON(this)">
+</div>
+<div class="config-section">
+  <h3>🗄 Arquivo OneDrive (sincronização direta)</h3>
+  <p>Se você usar o Chrome ou Edge, pode vincular um arquivo JSON direto na pasta do OneDrive. O app lê e salva automaticamente nesse arquivo — sem precisar exportar/importar manualmente.</p>
+  <div class="btn-row">
+    <button class="btn btn-success" onclick="vincularArquivo()">📂 Vincular arquivo OneDrive</button>
+    <button class="btn btn-outline" onclick="salvarNoArquivo()" id="btn-save-file" style="display:none">💾 Salvar no arquivo vinculado</button>
+  </div>
+  <div class="file-info" id="file-info"></div>
+</div>
+<div class="config-section">
+  <h3>📅 Transição de Exercício</h3>
+  <p>Ao virar o ano, use esta função para iniciar o novo exercício. Os dados realizados de <strong id="ano-atual-label">2026</strong> serão salvos automaticamente no histórico e os campos serão liberados para o novo ano.</p>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0">
+    <label style="font-size:13px;font-weight:600">Novo ano:</label>
+    <input type="number" id="novo-ano-input" style="width:100px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-weight:600" min="2027" step="1" value="${(dados.anoAtivo||2026)+1}">
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+      <input type="checkbox" id="copiar-metas-cb" style="width:16px;height:16px"> Copiar metas do ano atual para o próximo
+    </label>
+  </div>
+  <button class="btn btn-primary" onclick="transicionarAno(parseInt(document.getElementById('novo-ano-input').value), document.getElementById('copiar-metas-cb').checked)">🔄 Iniciar Exercício ${(dados.anoAtivo||2026)+1}</button>
+</div>
+<div class="config-section">
+  <h3>⚠️ Restaurar Dados Originais</h3>
+  <p>Redefine todos os dados ao estado original do Excel. <strong>Isso apagará todas as alterações feitas no painel.</strong></p>
+  <button class="btn btn-danger" onclick="restaurar()">🔄 Restaurar dados do Excel</button>
+</div>
+<div class="config-section">
+  <h3>ℹ️ Instruções de uso compartilhado</h3>
+  <p><strong>Fluxo recomendado para o time:</strong></p>
+  <ol style="font-size:13px;color:var(--text-secondary);line-height:2;padding-left:20px">
+    <li>O gestor atualiza os dados no painel (edita realizados, adiciona forecast).</li>
+    <li>Clica em <strong>Exportar dados</strong> e salva o arquivo <code>meta-${(dados.anoAtivo||2026)}-dados.json</code> na pasta compartilhada do OneDrive.</li>
+    <li>Os demais abrem este arquivo HTML no navegador e clicam em <strong>Importar dados</strong>, selecionando o JSON do OneDrive.</li>
+    <li>Alternativamente, use a opção <strong>Vincular arquivo OneDrive</strong> no Chrome/Edge para sincronização automática.</li>
+  </ol>
+</div>`;
+}
+
+function exportarJSON() {
+  const json = JSON.stringify(dados, null, 2);
+  const blob = new Blob([json], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `meta-${dados.anoAtivo||2026}-dados.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Dados exportados com sucesso!');
+}
+
+function importarJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!imported.executivos) throw new Error('Formato inválido');
+      dados = imported;
+      salvar();
+      renderView();
+      toast('Dados importados com sucesso!');
+    } catch(err) {
+      toast('Erro ao importar: arquivo inválido.');
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+let fileHandle = null;
+async function vincularArquivo() {
+  if (!window.showOpenFilePicker) { toast('Função disponível apenas no Chrome/Edge.'); return; }
+  try {
+    [fileHandle] = await window.showOpenFilePicker({types:[{description:'JSON',accept:{'application/json':['.json']}}]});
+    const file = await fileHandle.getFile();
+    const text = await file.text();
+    try {
+      const imported = JSON.parse(text);
+      if (imported.executivos) { dados = imported; salvar(); renderView(); toast('Arquivo vinculado e dados carregados!'); }
+    } catch(e) { toast('Arquivo vinculado. Dados existentes mantidos.'); }
+    document.getElementById('btn-save-file').style.display = '';
+    document.getElementById('file-info').style.display = '';
+    document.getElementById('file-info').textContent = '✓ Arquivo vinculado: ' + file.name;
+  } catch(e) {}
+}
+
+async function salvarNoArquivo() {
+  if (!fileHandle) { toast('Nenhum arquivo vinculado.'); return; }
+  try {
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(dados, null, 2));
+    await writable.close();
+    toast('Dados salvos no arquivo OneDrive!');
+  } catch(e) { toast('Erro ao salvar no arquivo.'); }
+}
+
+function restaurar() {
+  if (!confirm('Tem certeza? Todos os dados editados serão perdidos.')) return;
+  dados = {
+    anoAtivo: 2026,
+    historico: {
+      2025: { ytd: HIST_2025.ytd, meses: Object.assign({}, HIST_2025.meses), tri1: HIST_2025.tri1, tri2: HIST_2025.tri2, tri3: 0, tri4: 0 }
+    },
+    executivos: JSON.parse(JSON.stringify(EXEC_INICIAL)),
+    forecast: JSON.parse(JSON.stringify(FC_INICIAL))
+  };
+  salvar();
+  updateYearUI();
+  renderView();
+  toast('Dados restaurados!');
+}
+
+// =====================================================================
+// RENDER DISPATCHER
+// =====================================================================
+function renderView() {
+  const fn = {dashboard:renderDashboard, resultados:renderResultados, ranking:renderRanking, forecast:renderForecast, historico:renderHistorico, dados:renderDados};
+  if (fn[state.view]) fn[state.view]();
+}
+
+// =====================================================================
+// TOAST
+// =====================================================================
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// =====================================================================
+// MICROSOFT 365 / GRAPH SYNC
+// =====================================================================
+let _msalApp = null;
+let _m365Account = null;
+const GRAPH_SCOPE = ['Files.ReadWrite.All'];
+
+function getM365Config() {
+  const saved = localStorage.getItem('m365_config');
+  if (saved) try { return JSON.parse(saved); } catch(e) {}
+  return { clientId: '', tenantId: '', siteUrl: '', filePath: 'meta-dados.json' };
+}
+
+function saveM365Config() {
+  const cfg = {
+    clientId: document.getElementById('m365-client-id')?.value.trim() || '',
+    tenantId: document.getElementById('m365-tenant-id')?.value.trim() || '',
+    siteUrl:  document.getElementById('m365-site-url')?.value.trim()  || '',
+    filePath: document.getElementById('m365-file-path')?.value.trim() || 'meta-dados.json'
+  };
+  localStorage.setItem('m365_config', JSON.stringify(cfg));
+  _msalApp = null;
+  toast('Configuração M365 salva!');
+}
+
+async function ensureMsal() {
+  if (_msalApp) return true;
+  const cfg = getM365Config();
+  if (!cfg.clientId || !cfg.tenantId) return false;
+  if (!window.msal) { toast('MSAL não carregado. Verifique a conexão com a internet.'); return false; }
+  try {
+    _msalApp = new msal.PublicClientApplication({
+      auth: {
+        clientId: cfg.clientId,
+        authority: `https://login.microsoftonline.com/${cfg.tenantId}`,
+        redirectUri: window.location.href.split('?')[0].replace(/#.*$/, '')
+      },
+      cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
+    });
+    await _msalApp.initialize();
+    return true;
+  } catch(e) { toast('Erro MSAL: ' + e.message); return false; }
+}
+
+async function getGraphToken() {
+  if (!_msalApp) return null;
+  const accounts = _msalApp.getAllAccounts();
+  if (!accounts.length) return null;
+  try {
+    const r = await _msalApp.acquireTokenSilent({ scopes: GRAPH_SCOPE, account: accounts[0] });
+    return r.accessToken;
+  } catch(e) {
+    try {
+      const r = await _msalApp.acquireTokenPopup({ scopes: GRAPH_SCOPE });
+      return r.accessToken;
+    } catch(e2) { return null; }
+  }
+}
+
+function getGraphFileUrl() {
+  const cfg = getM365Config();
+  const file = cfg.filePath || 'meta-dados.json';
+  if (cfg.siteUrl) {
+    try {
+      const u = new URL(cfg.siteUrl);
+      return `https://graph.microsoft.com/v1.0/sites/${u.hostname}:${u.pathname}:/drive/root:/${file}:/content`;
+    } catch(e) {}
+  }
+  return `https://graph.microsoft.com/v1.0/me/drive/root:/${file}:/content`;
+}
+
+function updateM365Dot() {
+  const dot = document.getElementById('m365-dot');
+  if (!dot) return;
+  const cfg = getM365Config();
+  if (!cfg.clientId) { dot.style.display = 'none'; return; }
+  dot.style.display = '';
+  if (_m365Account) {
+    dot.textContent = `☁ ${_m365Account.username.split('@')[0]}`;
+    dot.style.color = '#10b981';
+  } else {
+    dot.textContent = '☁ Desconectado';
+    dot.style.color = '#f59e0b';
+  }
+}
+
+async function m365Login() {
+  const ok = await ensureMsal();
+  if (!ok) { toast('Configure Client ID e Tenant ID antes de conectar.'); return; }
+  try {
+    const resp = await _msalApp.loginPopup({ scopes: GRAPH_SCOPE });
+    _m365Account = resp.account;
+    updateM365Dot();
+    toast(`Conectado: ${resp.account.username} ✓`);
+    await syncFromM365();
+    if (state.view === 'dados') renderDados();
+  } catch(e) { toast('Erro no login: ' + (e.message || 'cancelado')); }
+}
+
+async function m365Logout() {
+  if (!_msalApp || !_m365Account) return;
+  try {
+    await _msalApp.logoutPopup({ account: _m365Account });
+  } catch(e) {}
+  _m365Account = null;
+  updateM365Dot();
+  if (state.view === 'dados') renderDados();
+  toast('Desconectado do Microsoft 365.');
+}
+
+async function syncToM365() {
+  if (!_m365Account) return;
+  const token = await getGraphToken();
+  if (!token) return;
+  const dot = document.getElementById('m365-dot');
+  try {
+    const resp = await fetch(getGraphFileUrl(), {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(dados, null, 2)
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    if (dot) { dot.textContent = '☁ Sincronizado'; dot.style.color = '#10b981'; }
+  } catch(e) {
+    if (dot) { dot.textContent = '☁ Erro sync'; dot.style.color = '#ef4444'; }
+    console.error('syncToM365:', e);
+  }
+}
+
+async function syncFromM365() {
+  if (!_m365Account) return;
+  const token = await getGraphToken();
+  if (!token) return;
+  try {
+    const resp = await fetch(getGraphFileUrl(), { headers: { 'Authorization': `Bearer ${token}` } });
+    if (resp.status === 404) { toast('Arquivo não existe ainda no SharePoint — será criado no próximo save.'); return; }
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const imported = await resp.json();
+    if (!imported.executivos) throw new Error('Formato inválido');
+    dados = imported;
+    if (!dados.anoAtivo) dados.anoAtivo = 2026;
+    if (!dados.historico) dados.historico = { 2025: { ytd: HIST_2025.ytd, meses: Object.assign({}, HIST_2025.meses), tri1: HIST_2025.tri1, tri2: HIST_2025.tri2, tri3: 0, tri4: 0 } };
+    dados.forecast.forEach(f => {
+      if (f.status    === undefined) f.status    = 'open';
+      if (f.gestor    === undefined) f.gestor    = '';
+      if (f.valorGanho=== undefined) f.valorGanho= 0;
+    });
+    localStorage.setItem('painel_meta_2026', JSON.stringify(dados));
+    updateYearUI();
+    renderView();
+    toast('Dados carregados do SharePoint! ☁');
+  } catch(e) { toast('Erro ao ler SharePoint: ' + (e.message || e)); }
+}
+
+async function autoInitM365() {
+  const cfg = getM365Config();
+  if (!cfg.clientId || !cfg.tenantId) return;
+  const ok = await ensureMsal();
+  if (!ok) return;
+  const accounts = _msalApp.getAllAccounts();
+  if (accounts.length) {
+    _m365Account = accounts[0];
+    updateM365Dot();
+    await syncFromM365();
+  }
+  updateM365Dot();
+}
+
+// =====================================================================
+// BOOTSTRAP
+// =====================================================================
+initDados();
+updateYearUI();
+renderView();
+autoInitM365();
+</script>
+</body>
+</html>
