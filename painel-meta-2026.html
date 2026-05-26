@@ -469,7 +469,9 @@ let state = {
   mes: 5,
   prod: 'TOTAL',
   nextFcId: 100,
-  sortResultados: 'default'
+  sortResultados: 'default',
+  fcFiltroData: '',
+  fcFiltroGestor: ''
 };
 let dados = null;
 let charts = {};
@@ -1342,10 +1344,24 @@ function renderForecast() {
   const decided      = wonFc.length + lostFc.length;
   const convRate     = decided > 0 ? (wonFc.length / decided * 100) : 0;
 
+  // Filtros
+  const filtroData   = state.fcFiltroData;
+  const filtroGestor = state.fcFiltroGestor;
+  const gestoresUnicos = [...new Set(
+    all.map(f => { const e = getExec(f.exec); return f.gestor || (e ? e.nome : ''); }).filter(Boolean)
+  )].sort();
+  const filteredAll = all.filter(f => {
+    const e = getExec(f.exec);
+    const gestor = f.gestor || (e ? e.nome : '');
+    if (filtroData   && f.data  !== filtroData)   return false;
+    if (filtroGestor && gestor  !== filtroGestor) return false;
+    return true;
+  });
+
   // Group items by exec
   const byExec = {};
   execs.forEach(e => { byExec[e.id] = {exec:e, items:[]}; });
-  all.forEach(f => { if (byExec[f.exec]) byExec[f.exec].items.push(f); });
+  filteredAll.forEach(f => { if (byExec[f.exec]) byExec[f.exec].items.push(f); });
 
   let itemsHtml = '';
   Object.values(byExec).forEach(({exec, items}) => {
@@ -1462,8 +1478,23 @@ function renderForecast() {
   </div>
 </div>
 
-<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-  <button class="btn btn-primary" onclick="openFcModal()">+ Adicionar Oportunidade</button>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+  <div style="display:flex;align-items:center;gap:6px;background:white;border:1px solid var(--border);border-radius:8px;padding:5px 10px;${filtroData?'border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)':''}">
+    <span style="font-size:13px;color:var(--text-secondary)">📅 Dia:</span>
+    <input type="date" value="${filtroData}" onchange="setFcFiltro(this.value)"
+      style="border:none;outline:none;font-size:13px;color:var(--text-primary);background:transparent;cursor:pointer">
+    ${filtroData ? `<button onclick="setFcFiltro('')" title="Limpar" style="border:none;background:none;cursor:pointer;color:var(--text-secondary);font-size:16px;line-height:1;padding:0 2px">×</button>` : ''}
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;background:white;border:1px solid var(--border);border-radius:8px;padding:5px 10px;${filtroGestor?'border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)':''}">
+    <span style="font-size:13px;color:var(--text-secondary)">👤 Gestor:</span>
+    <select onchange="setFcGestorFiltro(this.value)" style="border:none;outline:none;font-size:13px;color:var(--text-primary);background:transparent;cursor:pointer;max-width:160px">
+      <option value="">Todos</option>
+      ${gestoresUnicos.map(g => `<option value="${g}"${g===filtroGestor?' selected':''}>${g}</option>`).join('')}
+    </select>
+    ${filtroGestor ? `<button onclick="setFcGestorFiltro('')" title="Limpar" style="border:none;background:none;cursor:pointer;color:var(--text-secondary);font-size:16px;line-height:1;padding:0 2px">×</button>` : ''}
+  </div>
+  ${(filtroData||filtroGestor) ? `<span style="font-size:12px;color:#3b82f6;font-weight:600">${filteredAll.length} oportunidade${filteredAll.length!==1?'s':''}${filtroData?' · '+new Date(filtroData+'T12:00:00').toLocaleDateString('pt-BR'):''}${filtroGestor?' · '+filtroGestor:''}</span>` : ''}
+  <button class="btn btn-primary" style="margin-left:auto" onclick="openFcModal()">+ Adicionar Oportunidade</button>
 </div>
 
 <div class="section-card" style="margin-bottom:14px">
@@ -1493,6 +1524,16 @@ function onExecChange() {
   const e = getExec(execId);
   const row = document.getElementById('fc-gestor-row');
   if (row) row.style.display = (e && e.tipo === 'Canal') ? '' : 'none';
+}
+
+function setFcFiltro(data) {
+  state.fcFiltroData = data;
+  renderForecast();
+}
+
+function setFcGestorFiltro(gestor) {
+  state.fcFiltroGestor = gestor;
+  renderForecast();
 }
 
 function openFcModal() {
