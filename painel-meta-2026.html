@@ -328,7 +328,7 @@ table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2p
 
 <!-- Modal Ganho -->
 <div class="modal-overlay" id="modal-ganho">
-  <div class="modal" style="width:400px">
+  <div class="modal" style="width:440px">
     <h3>🏆 Marcar como Ganho</h3>
     <div class="form-row">
       <label class="form-label">Empresa</label>
@@ -339,8 +339,29 @@ table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2p
       <div id="ganho-estimado-label" style="font-size:13px;color:var(--text-secondary);padding:2px 0"></div>
     </div>
     <div class="form-row">
-      <label class="form-label">Valor Real Fechado (R$)</label>
-      <input class="form-input" id="ganho-valor" type="number" placeholder="0.00" step="0.01" min="0">
+      <label class="form-label">Mês de lançamento nos Resultados</label>
+      <select class="form-select" id="ganho-mes"></select>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Distribuição por produto (R$)</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:6px">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-bottom:4px">EMPRESAS</div>
+          <input class="form-input" id="ganho-emp" type="number" placeholder="0" min="0" step="0.01" oninput="updateGanhoTotal()">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-bottom:4px">JURIMETRIA</div>
+          <input class="form-input" id="ganho-jur" type="number" placeholder="0" min="0" step="0.01" oninput="updateGanhoTotal()">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-bottom:4px">OYSTR</div>
+          <input class="form-input" id="ganho-oys" type="number" placeholder="0" min="0" step="0.01" oninput="updateGanhoTotal()">
+        </div>
+      </div>
+      <div style="margin-top:10px;padding:9px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:var(--text-secondary)">Total fechado:</span>
+        <span id="ganho-total-label" style="font-size:16px;font-weight:800;color:#10b981">R$ 0,00</span>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeGanhoModal()">Cancelar</button>
@@ -1513,8 +1534,27 @@ function openGanhoModal(id) {
   _ganhoId = id;
   document.getElementById('ganho-empresa-label').textContent = fc.empresa;
   document.getElementById('ganho-estimado-label').textContent = 'Estimado: ' + R(fc.valor);
-  document.getElementById('ganho-valor').value = (fc.valorGanho || fc.valor).toFixed(2);
+
+  // Mês: usa a data da oportunidade se preenchida, senão mês corrente
+  const mesPadrao = fc.data ? parseInt(fc.data.split('-')[1]) : (new Date().getMonth() + 1);
+  const selMes = document.getElementById('ganho-mes');
+  selMes.innerHTML = MESES_NOMES.slice(1).map((n, i) =>
+    `<option value="${i+1}"${(i+1)===mesPadrao?' selected':''}>${n}</option>`
+  ).join('');
+
+  // Zera os campos de produto
+  document.getElementById('ganho-emp').value = '';
+  document.getElementById('ganho-jur').value = '';
+  document.getElementById('ganho-oys').value = '';
+  updateGanhoTotal();
   document.getElementById('modal-ganho').classList.add('open');
+}
+
+function updateGanhoTotal() {
+  const v = (parseFloat(document.getElementById('ganho-emp').value)||0)
+          + (parseFloat(document.getElementById('ganho-jur').value)||0)
+          + (parseFloat(document.getElementById('ganho-oys').value)||0);
+  document.getElementById('ganho-total-label').textContent = R(v);
 }
 
 function closeGanhoModal() {
@@ -1526,14 +1566,34 @@ function confirmarGanho() {
   if (_ganhoId === null) return;
   const fc = dados.forecast.find(f => f.id === _ganhoId);
   if (!fc) return;
-  const v = parseFloat(document.getElementById('ganho-valor').value) || 0;
-  if (v <= 0) { toast('Informe o valor real fechado.'); return; }
-  fc.status = 'won';
-  fc.valorGanho = v;
+  const emp = parseFloat(document.getElementById('ganho-emp').value) || 0;
+  const jur = parseFloat(document.getElementById('ganho-jur').value) || 0;
+  const oys = parseFloat(document.getElementById('ganho-oys').value) || 0;
+  const total = emp + jur + oys;
+  if (total <= 0) { toast('Informe ao menos um valor por produto.'); return; }
+  const mes = parseInt(document.getElementById('ganho-mes').value);
+
+  // Registra no forecast
+  fc.status    = 'won';
+  fc.valorGanho = total;
+  fc.ganhoEMP  = emp;
+  fc.ganhoJUR  = jur;
+  fc.ganhoOYS  = oys;
+  fc.ganhoMes  = mes;
+
+  // Soma aos realizados do executivo no mês escolhido
+  const exec = getExec(fc.exec);
+  if (exec) {
+    const md = getMes(exec, mes);
+    md.EMP.real += emp;
+    md.JUR.real += jur;
+    md.OYS.real += oys;
+  }
+
   salvar();
   closeGanhoModal();
   renderForecast();
-  toast('Venda marcada como ganha! 🏆');
+  toast('Venda ganha! Realizados atualizados. 🏆');
 }
 
 function marcarPerdido(id) {
@@ -1548,11 +1608,27 @@ function marcarPerdido(id) {
 function reabrirFc(id) {
   const fc = dados.forecast.find(f => f.id === id);
   if (!fc) return;
-  fc.status = 'open';
+
+  // Se era ganho com lançamento nos realizados, reverte
+  if (fc.status === 'won' && fc.ganhoMes) {
+    const exec = getExec(fc.exec);
+    if (exec) {
+      const md = getMes(exec, fc.ganhoMes);
+      md.EMP.real = Math.max(0, md.EMP.real - (fc.ganhoEMP || 0));
+      md.JUR.real = Math.max(0, md.JUR.real - (fc.ganhoJUR || 0));
+      md.OYS.real = Math.max(0, md.OYS.real - (fc.ganhoOYS || 0));
+    }
+  }
+
+  fc.status    = 'open';
   fc.valorGanho = 0;
+  fc.ganhoEMP  = 0;
+  fc.ganhoJUR  = 0;
+  fc.ganhoOYS  = 0;
+  delete fc.ganhoMes;
   salvar();
   renderForecast();
-  toast('Oportunidade reaberta.');
+  toast('Oportunidade reaberta. Realizados revertidos.');
 }
 
 function closeModal() {
