@@ -357,11 +357,6 @@ table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2p
       <h2>Painel Comercial</h2>
       <p id="login-subtitle">Starian · Controle de Metas</p>
     </div>
-    <div class="login-setup" id="login-setup-box">
-      <label>Cole aqui o objeto <code>firebaseConfig</code> do seu projeto Firebase:</label>
-      <textarea id="fb-config-input" placeholder='{"apiKey":"...","authDomain":"...","projectId":"..."}'></textarea>
-      <button class="btn btn-primary" style="width:100%;margin-top:8px;justify-content:center" onclick="salvarFbConfig()">Salvar configuração Firebase</button>
-    </div>
     <div class="login-error" id="login-error"></div>
     <div class="form-row">
       <label class="form-label">E-mail</label>
@@ -1585,17 +1580,7 @@ function renderDados() {
          <button class="btn btn-success" onclick="syncFromFirestore().then(()=>toast('✔ Dados carregados'))">↓ Carregar dados da nuvem</button>
          <button class="btn btn-outline" onclick="syncToFirestore().then(()=>toast('✔ Dados enviados'))">↑ Enviar dados para a nuvem</button>
        </div>`
-    : `<p style="margin-bottom:12px">Configure o Firebase para que toda a equipe acesse os mesmos dados pelo mesmo link — sem depender de T.I. Os dados ficam protegidos por login e senha.</p>
-       ${!fbCfg
-         ? `<div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">
-              <label class="form-label">Cole aqui o objeto <code>firebaseConfig</code> do console Firebase</label>
-              <textarea id="fb-config-input" class="form-input" style="height:80px;margin-top:6px;font-family:monospace;font-size:12px" placeholder='{"apiKey":"...","authDomain":"...","projectId":"..."}'></textarea>
-              <button class="btn btn-primary" style="margin-top:8px" onclick="salvarFbConfig()">Salvar configuração Firebase</button>
-            </div>`
-         : `<div style="padding:8px 12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;margin-bottom:12px;font-size:12px;color:#9a3412">
-              Firebase configurado (projeto: <strong>${fbCfg.projectId}</strong>). Faça login na tela inicial.
-            </div>`
-       }
+    : `<p style="margin-bottom:12px">Faça login para sincronizar os dados com a equipe.</p>
        <button class="btn btn-primary" onclick="showLoginOverlay(false)">🔑 Fazer login</button>`
   }
 </div>
@@ -1785,10 +1770,17 @@ function toast(msg) {
 // =====================================================================
 let _fbApp = null, _fbAuth = null, _fbDb = null;
 
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCPKJu3aM_ETACMcce6M8gSt2gBhoy1nJs",
+  authDomain: "comercial-base-empresas.firebaseapp.com",
+  projectId: "comercial-base-empresas",
+  storageBucket: "comercial-base-empresas.firebasestorage.app",
+  messagingSenderId: "143634768740",
+  appId: "1:143634768740:web:2a23bc2aa8df6da23ed071"
+};
+
 function getFbConfig() {
-  const s = localStorage.getItem('firebase_config');
-  if (!s) return null;
-  try { return JSON.parse(s); } catch(e) { return null; }
+  return FIREBASE_CONFIG;
 }
 
 function initFirebase() {
