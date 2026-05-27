@@ -319,7 +319,7 @@ table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2p
 <!-- Modal Forecast -->
 <div class="modal-overlay" id="modal-fc">
   <div class="modal">
-    <h3>Adicionar Oportunidade</h3>
+    <h3 id="fc-modal-title">Adicionar Oportunidade</h3>
     <div class="form-row"><label class="form-label">Executivo / Canal</label><select class="form-select" id="fc-exec" onchange="onExecChange()"></select></div>
     <div class="form-row" id="fc-gestor-row" style="display:none">
       <label class="form-label">Gestor Comercial (vendedor do canal)</label>
@@ -330,7 +330,7 @@ table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2p
     <div class="form-row"><label class="form-label">Data Prevista de Fechamento</label><input class="form-input" id="fc-data" type="date"></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveFc()">Salvar</button>
+      <button class="btn btn-primary" id="fc-modal-save-btn" onclick="saveFc()">Salvar</button>
     </div>
   </div>
 </div>
@@ -1429,6 +1429,7 @@ function renderForecast() {
         ? `<button class="fc-action-btn fc-reopen" onclick="reabrirFc(${f.id})" title="Reabrir">↺</button>`
         : `<button class="fc-action-btn fc-win"   onclick="openGanhoModal(${f.id})" title="Marcar ganho">🏆</button>
            <button class="fc-action-btn fc-adiar" onclick="adiarFc(${f.id})" title="Adiar para o próximo mês">⏭</button>
+           <button class="fc-action-btn" onclick="editFc(${f.id})" title="Editar oportunidade" style="color:#64748b">✏️</button>
            <button class="fc-action-btn fc-lose"  onclick="marcarPerdido(${f.id})" title="Marcar perdido">✗</button>`;
       itemsHtml += `<div class="fc-item${rowCls}">
         <div class="fc-empresa">${f.empresa}${gestorTag}${adiadoTag}${statusTag}</div>
@@ -1447,10 +1448,11 @@ function renderForecast() {
     const exec = getExec(f.exec);
     if (!exec) return;
     const key = f.gestor ? f.gestor : exec.nome;
-    if (!gestorMap[key]) gestorMap[key] = {tipo:exec.tipo, canal:exec.tipo==='Canal'?exec.nome:'—', f:0, w:0, l:0, nW:0, nL:0};
+    if (!gestorMap[key]) gestorMap[key] = {tipo:exec.tipo, canal:exec.tipo==='Canal'?exec.nome:'—', f:0, w:0, l:0, a:0, nW:0, nL:0, nA:0};
     gestorMap[key].f += f.valor;
-    if (f.status==='won')  { gestorMap[key].w += (f.valorGanho||f.valor); gestorMap[key].nW++; }
-    if (f.status==='lost') { gestorMap[key].l += f.valor; gestorMap[key].nL++; }
+    if (f.status==='won')        { gestorMap[key].w += (f.valorGanho||f.valor); gestorMap[key].nW++; }
+    else if (f.status==='lost')  { gestorMap[key].l += f.valor; gestorMap[key].nL++; }
+    else if (f.adiamentos > 0)  { gestorMap[key].a += f.valor; gestorMap[key].nA++; }
   });
   const gestorRows = Object.entries(gestorMap).sort((a,b)=>b[1].w-a[1].w).map(([nome,g]) => {
     const taxa = (g.nW+g.nL)>0 ? g.nW/(g.nW+g.nL)*100 : null;
@@ -1463,6 +1465,7 @@ function renderForecast() {
       <td class="right">${R(g.f)}</td>
       <td class="right" style="color:#10b981;font-weight:600">${g.w>0?R(g.w):'—'}</td>
       <td class="right" style="color:#ef4444">${g.l>0?R(g.l):'—'}</td>
+      <td class="right" style="color:#f59e0b;font-weight:600">${g.a>0?`${R(g.a)} <span style="font-size:10px">(${g.nA})</span>`:'—'}</td>
       <td class="right">${taxa!==null?pctBadge(taxa):'—'}</td>
     </tr>`;
   }).join('');
@@ -1472,11 +1475,12 @@ function renderForecast() {
   all.forEach(f => {
     const exec = getExec(f.exec);
     if (!exec || exec.tipo !== 'Canal') return;
-    if (!canalMap[exec.id]) canalMap[exec.id] = {nome:exec.nome, f:0, w:0, l:0, nOpen:0, nW:0, nL:0};
+    if (!canalMap[exec.id]) canalMap[exec.id] = {nome:exec.nome, f:0, w:0, l:0, a:0, nOpen:0, nW:0, nL:0, nA:0};
     canalMap[exec.id].f += f.valor;
     if (f.status==='won')       { canalMap[exec.id].w += (f.valorGanho||f.valor); canalMap[exec.id].nW++; }
     else if (f.status==='lost') { canalMap[exec.id].l += f.valor; canalMap[exec.id].nL++; }
-    else canalMap[exec.id].nOpen++;
+    else if (f.adiamentos > 0) { canalMap[exec.id].a += f.valor; canalMap[exec.id].nA++; }
+    else                        { canalMap[exec.id].nOpen++; }
   });
   const canalRows = Object.values(canalMap).sort((a,b)=>b.w-a.w).map(c => {
     const taxa = (c.nW+c.nL)>0 ? c.nW/(c.nW+c.nL)*100 : null;
@@ -1486,6 +1490,7 @@ function renderForecast() {
       <td class="right">${R(c.f)}</td>
       <td class="right" style="color:#10b981;font-weight:600">${c.w>0?R(c.w):'—'}</td>
       <td class="right" style="color:#ef4444">${c.l>0?R(c.l):'—'}</td>
+      <td class="right" style="color:#f59e0b;font-weight:600">${c.a>0?`${R(c.a)} <span style="font-size:10px">(${c.nA})</span>`:'—'}</td>
       <td class="right">${taxa!==null?pctBadge(taxa):'—'}</td>
     </tr>`;
   }).join('');
@@ -1546,15 +1551,15 @@ ${(gestorRows || canalRows) ? `<div class="fc-summary-grid">
   <div class="section-card" style="margin-bottom:0">
     <div class="section-head"><span class="section-head-title">Por Gestor Comercial</span></div>
     <div style="overflow-x:auto"><table class="dt">
-      <thead><tr><th>Gestor</th><th>Tipo</th><th class="right">Forecast</th><th class="right">Ganhos</th><th class="right">Perdidos</th><th class="right">Taxa</th></tr></thead>
-      <tbody>${gestorRows||'<tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:16px">Sem dados</td></tr>'}</tbody>
+      <thead><tr><th>Gestor</th><th>Tipo</th><th class="right">Forecast</th><th class="right">Ganhos</th><th class="right">Perdidos</th><th class="right" style="color:#f59e0b">Adiados</th><th class="right">Taxa</th></tr></thead>
+      <tbody>${gestorRows||'<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:16px">Sem dados</td></tr>'}</tbody>
     </table></div>
   </div>
   <div class="section-card" style="margin-bottom:0">
     <div class="section-head"><span class="section-head-title">Por Canal</span></div>
     <div style="overflow-x:auto"><table class="dt">
-      <thead><tr><th>Canal</th><th class="right">Em aberto</th><th class="right">Forecast</th><th class="right">Ganhos</th><th class="right">Perdidos</th><th class="right">Taxa</th></tr></thead>
-      <tbody>${canalRows||'<tr><td colspan="6" style="text-align:center;color:var(--text-secondary);padding:16px">Sem dados de Canal</td></tr>'}</tbody>
+      <thead><tr><th>Canal</th><th class="right">Em aberto</th><th class="right">Forecast</th><th class="right">Ganhos</th><th class="right">Perdidos</th><th class="right" style="color:#f59e0b">Adiados</th><th class="right">Taxa</th></tr></thead>
+      <tbody>${canalRows||'<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:16px">Sem dados de Canal</td></tr>'}</tbody>
     </table></div>
   </div>
 </div>` : ''}`;
@@ -1604,7 +1609,10 @@ function adiarFc(id) {
   toast(`⏭ Adiado para ${nomeMes} — ${fc.adiamentos}ª vez`);
 }
 
+let _editFcId = null;
+
 function openFcModal() {
+  _editFcId = null;
   const sel = document.getElementById('fc-exec');
   sel.innerHTML = dados.executivos.map(e => `<option value="${e.id}">${e.nome} (${e.tipo})</option>`).join('');
   const today = new Date().toISOString().split('T')[0];
@@ -1612,7 +1620,25 @@ function openFcModal() {
   document.getElementById('fc-empresa-input').value = '';
   document.getElementById('fc-valor').value = '';
   document.getElementById('fc-gestor').value = '';
+  document.getElementById('fc-modal-title').textContent = 'Adicionar Oportunidade';
+  document.getElementById('fc-modal-save-btn').textContent = 'Salvar';
   onExecChange();
+  document.getElementById('modal-fc').classList.add('open');
+}
+
+function editFc(id) {
+  const fc = dados.forecast.find(f => f.id === id);
+  if (!fc) return;
+  _editFcId = id;
+  const sel = document.getElementById('fc-exec');
+  sel.innerHTML = dados.executivos.map(e => `<option value="${e.id}"${e.id===fc.exec?' selected':''}>${e.nome} (${e.tipo})</option>`).join('');
+  onExecChange();
+  document.getElementById('fc-empresa-input').value = fc.empresa;
+  document.getElementById('fc-valor').value = fc.valor;
+  document.getElementById('fc-data').value = fc.data || '';
+  document.getElementById('fc-gestor').value = fc.gestor || '';
+  document.getElementById('fc-modal-title').textContent = '✏️ Editar Oportunidade';
+  document.getElementById('fc-modal-save-btn').textContent = 'Salvar Alterações';
   document.getElementById('modal-fc').classList.add('open');
 }
 
@@ -1623,6 +1649,26 @@ function saveFc() {
   const data = document.getElementById('fc-data').value;
   const gestor = document.getElementById('fc-gestor').value.trim();
   if (!empresa || valor <= 0) { toast('Preencha empresa e valor.'); return; }
+
+  if (_editFcId !== null) {
+    const fc = dados.forecast.find(f => f.id === _editFcId);
+    if (!fc) return;
+    const dataAlterada = fc.data !== data;
+    fc.exec    = exec;
+    fc.empresa = empresa;
+    fc.valor   = valor;
+    fc.data    = data;
+    fc.gestor  = gestor;
+    // Se a data foi alterada manualmente, zera o contador de adiamentos
+    if (dataAlterada) fc.adiamentos = 0;
+    _editFcId = null;
+    salvar();
+    closeModal();
+    renderForecast();
+    toast('Oportunidade atualizada!');
+    return;
+  }
+
   dados.forecast.push({id: state.nextFcId++, exec, empresa, valor, data, gestor, status:'open', valorGanho:0});
   salvar();
   closeModal();
@@ -1742,6 +1788,7 @@ function reabrirFc(id) {
 
 function closeModal() {
   document.getElementById('modal-fc').classList.remove('open');
+  _editFcId = null;
 }
 
 // =====================================================================
