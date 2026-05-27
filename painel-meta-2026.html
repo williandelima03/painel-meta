@@ -124,11 +124,20 @@ table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2p
 .fc-action-btn.fc-win { color: #10b981; font-size: 15px; }
 .fc-action-btn.fc-lose { color: #ef4444; }
 .fc-action-btn.fc-reopen { color: var(--text-secondary); font-size: 15px; }
+.fc-action-btn.fc-adiar { color: #f59e0b; }
+.fc-adiar-badge { display:inline-flex;align-items:center;justify-content:center;background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;border-radius:10px;padding:1px 5px;margin-left:4px;vertical-align:middle; }
 .fc-del { opacity: 0; cursor: pointer; color: var(--danger); font-size: 16px; line-height: 1; background: none; border: none; padding: 0 4px; }
 .fc-item:hover .fc-del { opacity: 1; }
 .fc-status-tag { font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 700; margin-left: 6px; vertical-align: middle; }
 .fc-tag-won { background: #d1fae5; color: #065f46; }
 .fc-tag-lost { background: #fee2e2; color: #991b1b; }
+.fc-tag-adiado { background: #fef3c7; color: #92400e; }
+.mes-chips { display:flex;gap:4px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none; }
+.mes-chips::-webkit-scrollbar { display:none; }
+.mes-chip { flex-shrink:0;border:1px solid var(--border);background:white;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:500;cursor:pointer;color:var(--text-secondary);transition:all 0.15s;white-space:nowrap; }
+.mes-chip:hover { border-color:#3b82f6;color:#3b82f6; }
+.mes-chip.active { background:#3b82f6;border-color:#3b82f6;color:white;font-weight:700; }
+.mes-chip-cnt { display:inline-flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.12);border-radius:8px;padding:0 5px;font-size:10px;margin-left:4px;min-width:16px; }
 .fc-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
 
 .hist-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; padding: 16px 20px; }
@@ -470,6 +479,7 @@ let state = {
   prod: 'TOTAL',
   nextFcId: 100,
   sortResultados: 'default',
+  fcFiltroMes: '',
   fcFiltroData: '',
   fcFiltroGestor: ''
 };
@@ -1345,18 +1355,41 @@ function renderForecast() {
   const convRate     = decided > 0 ? (wonFc.length / decided * 100) : 0;
 
   // Filtros
+  const filtroMes    = state.fcFiltroMes;
   const filtroData   = state.fcFiltroData;
   const filtroGestor = state.fcFiltroGestor;
+  const anoAt        = dados.anoAtivo || 2026;
+
   const gestoresUnicos = [...new Set(
     all.map(f => { const e = getExec(f.exec); return f.gestor || (e ? e.nome : ''); }).filter(Boolean)
   )].sort();
+
+  // Contagem por mês para os chips
+  const cntPorMes = {};
+  all.filter(f => !f.status || f.status === 'open').forEach(f => {
+    if (f.data) { const ym = f.data.substring(0,7); cntPorMes[ym] = (cntPorMes[ym]||0)+1; }
+  });
+
   const filteredAll = all.filter(f => {
     const e = getExec(f.exec);
     const gestor = f.gestor || (e ? e.nome : '');
-    if (filtroData   && f.data  !== filtroData)   return false;
-    if (filtroGestor && gestor  !== filtroGestor) return false;
+    if (filtroMes    && !(f.data||'').startsWith(filtroMes)) return false;
+    if (filtroData   && f.data !== filtroData)               return false;
+    if (filtroGestor && gestor !== filtroGestor)             return false;
     return true;
   });
+
+  // Chips de mês
+  const mesesChips = ['',...Array.from({length:12},(_,i)=>`${anoAt}-${String(i+1).padStart(2,'0')}`)].map(ym => {
+    if (!ym) return `<button class="mes-chip${!filtroMes?' active':''}" onclick="setFcFiltroMes('')">Todos</button>`;
+    const m = parseInt(ym.split('-')[1]);
+    const nome = MESES_NOMES[m].substring(0,3);
+    const cnt  = cntPorMes[ym] || 0;
+    const isActive = ym === filtroMes;
+    return `<button class="mes-chip${isActive?' active':''}" onclick="setFcFiltroMes('${ym}')" style="${!cnt&&!isActive?'opacity:0.4':''}">
+      ${nome}${cnt?`<span class="mes-chip-cnt">${cnt}</span>`:''}
+    </button>`;
+  }).join('');
 
   // Group items by exec
   const byExec = {};
@@ -1382,6 +1415,8 @@ function renderForecast() {
       const isLost = f.status === 'lost';
       const rowCls = isWon ? ' fc-won' : isLost ? ' fc-lost' : '';
       const gestorTag = f.gestor ? `<span style="font-size:11px;color:var(--text-secondary)"> · ${f.gestor}</span>` : '';
+      const adiadoTag = (f.adiamentos && !isWon && !isLost)
+        ? `<span class="fc-adiar-badge">⏭ ${f.adiamentos}x adiado</span>` : '';
       const statusTag = isWon  ? `<span class="fc-status-tag fc-tag-won">🏆 GANHO</span>`
                       : isLost ? `<span class="fc-status-tag fc-tag-lost">✗ PERDIDO</span>` : '';
       const valorHtml = isWon && f.valorGanho && f.valorGanho !== f.valor
@@ -1392,10 +1427,11 @@ function renderForecast() {
         : `<div class="fc-valor" style="${isLost?'text-decoration:line-through;color:var(--text-secondary)':''}">${R(f.valor)}</div>`;
       const actionBtns = (isWon || isLost)
         ? `<button class="fc-action-btn fc-reopen" onclick="reabrirFc(${f.id})" title="Reabrir">↺</button>`
-        : `<button class="fc-action-btn fc-win"  onclick="openGanhoModal(${f.id})" title="Marcar ganho">🏆</button>
-           <button class="fc-action-btn fc-lose" onclick="marcarPerdido(${f.id})" title="Marcar perdido">✗</button>`;
+        : `<button class="fc-action-btn fc-win"   onclick="openGanhoModal(${f.id})" title="Marcar ganho">🏆</button>
+           <button class="fc-action-btn fc-adiar" onclick="adiarFc(${f.id})" title="Adiar para o próximo mês">⏭</button>
+           <button class="fc-action-btn fc-lose"  onclick="marcarPerdido(${f.id})" title="Marcar perdido">✗</button>`;
       itemsHtml += `<div class="fc-item${rowCls}">
-        <div class="fc-empresa">${f.empresa}${gestorTag}${statusTag}</div>
+        <div class="fc-empresa">${f.empresa}${gestorTag}${adiadoTag}${statusTag}</div>
         ${valorHtml}
         <div class="fc-data">📅 ${d}</div>
         ${actionBtns}
@@ -1478,6 +1514,11 @@ function renderForecast() {
   </div>
 </div>
 
+<div style="background:white;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:10px">
+  <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Mês de Fechamento</div>
+  <div class="mes-chips">${mesesChips}</div>
+</div>
+
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
   <div style="display:flex;align-items:center;gap:6px;background:white;border:1px solid var(--border);border-radius:8px;padding:5px 10px;${filtroData?'border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)':''}">
     <span style="font-size:13px;color:var(--text-secondary)">📅 Dia:</span>
@@ -1526,6 +1567,12 @@ function onExecChange() {
   if (row) row.style.display = (e && e.tipo === 'Canal') ? '' : 'none';
 }
 
+function setFcFiltroMes(ym) {
+  state.fcFiltroMes = ym;
+  state.fcFiltroData = ''; // limpa filtro de dia ao trocar mês
+  renderForecast();
+}
+
 function setFcFiltro(data) {
   state.fcFiltroData = data;
   renderForecast();
@@ -1534,6 +1581,27 @@ function setFcFiltro(data) {
 function setFcGestorFiltro(gestor) {
   state.fcFiltroGestor = gestor;
   renderForecast();
+}
+
+function adiarFc(id) {
+  const fc = dados.forecast.find(f => f.id === id);
+  if (!fc) return;
+  // Calcula o mesmo dia no próximo mês (sem overflow para meses curtos)
+  const d = fc.data ? new Date(fc.data + 'T12:00:00') : new Date();
+  const proxMes = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  const ultimoDia = new Date(proxMes.getFullYear(), proxMes.getMonth() + 1, 0).getDate();
+  proxMes.setDate(Math.min(d.getDate(), ultimoDia));
+  fc.data = proxMes.toISOString().split('T')[0];
+  fc.adiamentos = (fc.adiamentos || 0) + 1;
+  // Avança o filtro de mês automaticamente se estava filtrado no mês atual
+  const novoYm = fc.data.substring(0, 7);
+  if (state.fcFiltroMes && state.fcFiltroMes !== novoYm) {
+    state.fcFiltroMes = novoYm;
+  }
+  salvar();
+  renderForecast();
+  const nomeMes = MESES_NOMES[proxMes.getMonth() + 1];
+  toast(`⏭ Adiado para ${nomeMes} — ${fc.adiamentos}ª vez`);
 }
 
 function openFcModal() {
