@@ -1401,16 +1401,6 @@ function renderHistorico() {
 function renderForecast() {
   const execs = dados.executivos;
   const all   = dados.forecast;
-  const openFc = all.filter(f => !f.status || f.status === 'open');
-  const wonFc  = all.filter(f => f.status === 'won');
-  const lostFc = all.filter(f => f.status === 'lost');
-
-  const totalOpen    = openFc.reduce((s,f) => s + f.valor, 0);
-  const totalWonReal = wonFc.reduce((s,f) => s + (f.valorGanho || f.valor), 0);
-  const totalWonEst  = wonFc.reduce((s,f) => s + f.valor, 0);
-  const totalLost    = lostFc.reduce((s,f) => s + f.valor, 0);
-  const decided      = wonFc.length + lostFc.length;
-  const convRate     = decided > 0 ? (wonFc.length / decided * 100) : 0;
 
   // Filtros
   const filtroMes    = state.fcFiltroMes;
@@ -1436,6 +1426,17 @@ function renderForecast() {
     if (filtroGestor && gestor !== filtroGestor)             return false;
     return true;
   });
+
+  // KPIs calculados sobre os itens filtrados
+  const openFc = filteredAll.filter(f => !f.status || f.status === 'open');
+  const wonFc  = filteredAll.filter(f => f.status === 'won');
+  const lostFc = filteredAll.filter(f => f.status === 'lost');
+  const totalOpen    = openFc.reduce((s,f) => s + f.valor, 0);
+  const totalWonReal = wonFc.reduce((s,f) => s + (f.valorGanho || f.valor), 0);
+  const totalWonEst  = wonFc.reduce((s,f) => s + f.valor, 0);
+  const totalLost    = lostFc.reduce((s,f) => s + f.valor, 0);
+  const decided      = wonFc.length + lostFc.length;
+  const convRate     = decided > 0 ? (wonFc.length / decided * 100) : 0;
 
   // Chips de mês
   const mesesChips = ['',...Array.from({length:12},(_,i)=>`${anoAt}-${String(i+1).padStart(2,'0')}`)].map(ym => {
