@@ -505,9 +505,10 @@ function initDados() {
         if (f.gestor    === undefined) f.gestor    = '';
         if (f.valorGanho=== undefined) f.valorGanho= 0;
       });
-      // Garante nextFcId maior que qualquer id existente (evita colisões após reload)
+      // Corrige IDs duplicados ou ausentes e calibra nextFcId
       const maxId = dados.forecast.reduce((mx, f) => Math.max(mx, f.id || 0), 0);
       if (maxId >= state.nextFcId) state.nextFcId = maxId + 1;
+      fixForecastIds();
       return;
     } catch(e) {}
   }
@@ -540,6 +541,20 @@ function pctBadge(p) {
   return `<span class="pct ${cls}">${p.toFixed(1)}%</span>`;
 }
 function getExec(id) { return dados.executivos.find(e => e.id === id); }
+
+// Detecta e corrige IDs duplicados ou ausentes no forecast (deixa todos únicos)
+function fixForecastIds() {
+  const seen = new Set();
+  let nextId = state.nextFcId;
+  dados.forecast.forEach(f => {
+    if (f.id === undefined || f.id === null || seen.has(f.id)) {
+      while (seen.has(nextId)) nextId++;
+      f.id = nextId++;
+    }
+    seen.add(f.id);
+  });
+  state.nextFcId = nextId;
+}
 
 function getMes(e, m) {
   if (!e.meses[m]) e.meses[m] = {EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}};
@@ -2224,10 +2239,13 @@ async function syncFromFirestore() {
       if (f.gestor    === undefined) f.gestor    = '';
       if (f.valorGanho=== undefined) f.valorGanho= 0;
     });
-    // Garante nextFcId maior que qualquer id existente
+    // Corrige IDs duplicados ou ausentes e calibra nextFcId
     const maxId = dados.forecast.reduce((mx, f) => Math.max(mx, f.id || 0), 0);
     if (maxId >= state.nextFcId) state.nextFcId = maxId + 1;
+    fixForecastIds();
     localStorage.setItem('painel_meta_2026', JSON.stringify(dados));
+    // Persiste IDs corrigidos no Firestore imediatamente
+    await _fbDb.doc('dados/principal').set(JSON.parse(JSON.stringify(dados)));
     updateYearUI();
     renderView();
     setFbSyncDot('ok');
