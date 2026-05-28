@@ -911,20 +911,59 @@ function buildBarChart(m, p, isYtd) {
   );
   const ctx = document.getElementById('chart-bar');
   if (!ctx) return;
+
+  const metas = execs.map(e => isYtd ? ytdMeta(e,p,m) : totalMeta(e,m,p));
+  const reais = execs.map(e => isYtd ? ytdReal(e,p,m) : totalReal(e,m,p));
+
+  const pctLabelPlugin = {
+    id: 'pctLabel',
+    afterDatasetsDraw(chart) {
+      const { ctx: c, chartArea } = chart;
+      const reaisMeta = chart.getDatasetMeta(1);
+      c.save();
+      c.font = 'bold 10px "Segoe UI", Arial, sans-serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'bottom';
+      reaisMeta.data.forEach((bar, i) => {
+        const mt = metas[i];
+        const rl = reais[i];
+        const v  = mt > 0 ? Math.round(rl / mt * 100) : 0;
+        c.fillStyle = v >= 100 ? '#059669' : v >= 70 ? '#d97706' : '#dc2626';
+        // Posiciona acima da barra mas nunca fora da área do gráfico
+        const y = Math.max(bar.y - 4, chartArea.top + 11);
+        c.fillText(v + '%', bar.x, y);
+      });
+      c.restore();
+    }
+  };
+
   charts.bar = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: execs.map(e => e.nome),
       datasets: [
-        {label:'Meta', data: execs.map(e => isYtd ? ytdMeta(e,p,m) : totalMeta(e,m,p)), backgroundColor:'rgba(59,130,246,0.15)', borderColor:'#3b82f6', borderWidth:2},
-        {label:'Realizado', data: execs.map(e => isYtd ? ytdReal(e,p,m) : totalReal(e,m,p)), backgroundColor:'rgba(16,185,129,0.7)', borderColor:'#059669', borderWidth:0}
+        {label:'Meta',      data: metas, backgroundColor:'rgba(59,130,246,0.15)', borderColor:'#3b82f6', borderWidth:2},
+        {label:'Realizado', data: reais, backgroundColor:'rgba(16,185,129,0.7)',  borderColor:'#059669', borderWidth:0}
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: {legend:{position:'bottom', labels:{font:{size:11}}}, tooltip:{callbacks:{label: c => R(c.raw)}}},
-      scales: {x:{ticks:{font:{size:11}}}, y:{ticks:{callback: v => 'R$'+v.toLocaleString('pt-BR'), font:{size:11}}}}
-    }
+      layout: { padding: { top: 18 } },
+      plugins: {
+        legend: {position:'bottom', labels:{font:{size:11}}},
+        tooltip: {callbacks:{label: c => {
+          const mt = metas[c.dataIndex];
+          const rl = reais[c.dataIndex];
+          const v  = mt > 0 ? Math.round(rl / mt * 100) : 0;
+          return c.dataset.label + ': ' + R(c.raw) + (c.datasetIndex === 1 ? '  (' + v + '% da meta)' : '');
+        }}}
+      },
+      scales: {
+        x: {ticks:{font:{size:11}}},
+        y: {ticks:{callback: v => 'R$'+v.toLocaleString('pt-BR'), font:{size:11}}}
+      }
+    },
+    plugins: [pctLabelPlugin]
   });
 }
 
