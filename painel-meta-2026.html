@@ -372,6 +372,7 @@ table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2p
         <span id="ganho-total-label" style="font-size:16px;font-weight:800;color:#10b981">R$ 0,00</span>
       </div>
     </div>
+    <div id="ganho-erro" style="display:none;margin-top:8px;padding:8px 12px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;font-size:12px;color:#991b1b;font-weight:600"></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeGanhoModal()">Cancelar</button>
       <button class="btn btn-success" onclick="confirmarGanho()">✓ Confirmar Ganho</button>
@@ -504,6 +505,9 @@ function initDados() {
         if (f.gestor    === undefined) f.gestor    = '';
         if (f.valorGanho=== undefined) f.valorGanho= 0;
       });
+      // Garante nextFcId maior que qualquer id existente (evita colisões após reload)
+      const maxId = dados.forecast.reduce((mx, f) => Math.max(mx, f.id || 0), 0);
+      if (maxId >= state.nextFcId) state.nextFcId = maxId + 1;
       return;
     } catch(e) {}
   }
@@ -1736,10 +1740,11 @@ function openGanhoModal(id) {
     `<option value="${i+1}"${(i+1)===mesPadrao?' selected':''}>${n}</option>`
   ).join('');
 
-  // Zera os campos de produto
+  // Zera os campos de produto e erros
   document.getElementById('ganho-emp').value = '';
   document.getElementById('ganho-jur').value = '';
   document.getElementById('ganho-oys').value = '';
+  showGanhoErro('');
   updateGanhoTotal();
   document.getElementById('modal-ganho').classList.add('open');
 }
@@ -1756,38 +1761,54 @@ function closeGanhoModal() {
   _ganhoId = null;
 }
 
+function showGanhoErro(msg) {
+  const el = document.getElementById('ganho-erro');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = msg ? '' : 'none';
+}
+
 function confirmarGanho() {
-  if (_ganhoId === null) return;
+  showGanhoErro('');
+  if (_ganhoId === null) { showGanhoErro('Erro: nenhuma oportunidade selecionada. Feche e tente novamente.'); return; }
   const fc = dados.forecast.find(f => f.id === _ganhoId);
-  if (!fc) return;
+  if (!fc) { showGanhoErro('Erro: oportunidade não encontrada (id=' + _ganhoId + '). Feche e tente novamente.'); return; }
+
   const emp = parseFloat(document.getElementById('ganho-emp').value) || 0;
   const jur = parseFloat(document.getElementById('ganho-jur').value) || 0;
   const oys = parseFloat(document.getElementById('ganho-oys').value) || 0;
   const total = emp + jur + oys;
-  if (total <= 0) { toast('Informe ao menos um valor por produto.'); return; }
-  const mes = parseInt(document.getElementById('ganho-mes').value);
-
-  // Registra no forecast
-  fc.status    = 'won';
-  fc.valorGanho = total;
-  fc.ganhoEMP  = emp;
-  fc.ganhoJUR  = jur;
-  fc.ganhoOYS  = oys;
-  fc.ganhoMes  = mes;
-
-  // Soma aos realizados do executivo no mês escolhido
-  const exec = getExec(fc.exec);
-  if (exec) {
-    const md = getMes(exec, mes);
-    md.EMP.real += emp;
-    md.JUR.real += jur;
-    md.OYS.real += oys;
+  if (total <= 0) {
+    showGanhoErro('Informe o valor fechado em pelo menos um produto (Empresas, Jurimetria ou Oystr).');
+    return;
   }
 
-  salvar();
-  closeGanhoModal();
-  renderForecast();
-  toast('Venda ganha! Realizados atualizados. 🏆');
+  try {
+    const mes = parseInt(document.getElementById('ganho-mes').value);
+
+    fc.status     = 'won';
+    fc.valorGanho = total;
+    fc.ganhoEMP   = emp;
+    fc.ganhoJUR   = jur;
+    fc.ganhoOYS   = oys;
+    fc.ganhoMes   = mes;
+
+    const exec = getExec(fc.exec);
+    if (exec) {
+      const md = getMes(exec, mes);
+      md.EMP.real += emp;
+      md.JUR.real += jur;
+      md.OYS.real += oys;
+    }
+
+    salvar();
+    closeGanhoModal();
+    renderForecast();
+    toast('Venda ganha! Realizados atualizados. 🏆');
+  } catch(e) {
+    showGanhoErro('Erro inesperado: ' + e.message);
+    console.error('confirmarGanho:', e);
+  }
 }
 
 function marcarPerdido(id) {
@@ -2203,6 +2224,9 @@ async function syncFromFirestore() {
       if (f.gestor    === undefined) f.gestor    = '';
       if (f.valorGanho=== undefined) f.valorGanho= 0;
     });
+    // Garante nextFcId maior que qualquer id existente
+    const maxId = dados.forecast.reduce((mx, f) => Math.max(mx, f.id || 0), 0);
+    if (maxId >= state.nextFcId) state.nextFcId = maxId + 1;
     localStorage.setItem('painel_meta_2026', JSON.stringify(dados));
     updateYearUI();
     renderView();
