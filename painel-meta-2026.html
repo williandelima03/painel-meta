@@ -823,18 +823,21 @@ function renderDashboard() {
   const realTotal = m === 0 ? ytdR : realMes;
   const pctTotal  = pct(realTotal, metaTotal);
 
-  // Previsão de fechamento: realizado do mês + forecast em aberto
-  const fcAberto = dados.forecast.filter(f => !f.status || f.status === 'open').reduce((s, f) => s + f.valor, 0);
+  // Previsão de fechamento: realizado do mês + forecast em aberto (filtrado pelo mês selecionado)
+  const anoAtivo = dados.anoAtivo || 2026;
+  const mesPrefixo = `${anoAtivo}-${String(mEff).padStart(2,'0')}`;
+  const fcDoMes  = dados.forecast.filter(f => (f.data||'').startsWith(mesPrefixo));
+  const fcAberto = fcDoMes.filter(f => !f.status || f.status === 'open').reduce((s, f) => s + f.valor, 0);
   const prevFechamento = realMes + fcAberto;
   const pctPrev = pct(prevFechamento, metaMes);
 
   // vs ano anterior
-  const anoAnt = (dados.anoAtivo || 2026) - 1;
+  const anoAnt = anoAtivo - 1;
   const histAnt = getHistAno(anoAnt);
   const hist25  = m === 0 ? (histAnt.ytd || 0) : (histAnt.meses[mEff] || 0);
   const vsAno   = hist25 > 0 ? pct(realTotal, hist25) : 0;
 
-  const fcTotal = dados.forecast.reduce((s, f) => s + f.valor, 0);
+  const fcTotal = fcDoMes.reduce((s, f) => s + f.valor, 0);
 
   const badgeMes  = pctTotal >= 100 ? 'badge-green' : pctTotal >= 75 ? 'badge-yellow' : 'badge-red';
   const badgeYtd  = pctYtd  >= 100 ? 'badge-green' : pctYtd  >= 75 ? 'badge-yellow' : 'badge-red';
@@ -872,7 +875,7 @@ function renderDashboard() {
   <div class="kpi-card">
     <div class="kpi-label">Forecast (pipeline)</div>
     <div class="kpi-value">${R(fcTotal)}</div>
-    <div class="kpi-sub">${dados.forecast.length} oportunidades mapeadas</div>
+    <div class="kpi-sub">${fcDoMes.length} oportunidades em ${MESES_NOMES[mEff]}</div>
   </div>
 </div>
 <div class="charts-grid">
