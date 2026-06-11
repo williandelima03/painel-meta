@@ -9,6 +9,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root {
   --sidebar-bg: #0f172a;
@@ -43,6 +44,12 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--content-bg)
 .topbar { padding: 14px 24px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
 .topbar h2 { font-size: 17px; font-weight: 600; }
 .topbar-right { display: flex; align-items: center; gap: 12px; }
+.team-switcher { display: flex; background: #1e293b; border-radius: 10px; padding: 3px; gap: 2px; }
+.team-btn { padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; color: #94a3b8; background: transparent; transition: all 0.15s; white-space: nowrap; user-select: none; letter-spacing: 0.2px; }
+.team-btn.active { color: white; }
+.team-btn.base.active { background: #3b82f6; box-shadow: 0 1px 6px rgba(59,130,246,0.5); }
+.team-btn.novas.active { background: #10b981; box-shadow: 0 1px 6px rgba(16,185,129,0.5); }
+.team-btn:not(.active):hover { background: rgba(255,255,255,0.08); color: #e2e8f0; }
 .produto-tabs { display: flex; gap: 2px; background: #f1f5f9; border-radius: 8px; padding: 3px; }
 .produto-tab { padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--text-secondary); transition: all 0.15s; white-space: nowrap; user-select: none; }
 .produto-tab.active { background: white; color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -289,6 +296,10 @@ table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2p
 <div class="main">
   <div class="topbar">
     <h2 id="view-title">Dashboard</h2>
+    <div class="team-switcher">
+      <button class="team-btn base active" id="team-btn-base" onclick="switchTime('base')">🏢 Vendas Base</button>
+      <button class="team-btn novas" id="team-btn-novas" onclick="switchTime('novas')">🆕 Vendas Novas</button>
+    </div>
     <div class="topbar-right">
       <div class="produto-tabs" id="produto-tabs">
         <div class="produto-tab active" onclick="setProduto('TOTAL')">Total</div>
@@ -440,9 +451,9 @@ const EXEC_INICIAL = [
   {id:'LAURA',      nome:'LAURA',      tipo:'CLT',   meta:{EMP:29000,    JUR:3600,   OYS:6750},
    meses:{1:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},2:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},3:{EMP:{meta:0,real:724.04},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},4:{EMP:{meta:2160,real:839.67},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},5:{EMP:{meta:3888,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},6:{EMP:{meta:3252,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},7:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},8:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},9:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},10:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},11:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}},12:{EMP:{meta:3400,real:0},JUR:{meta:350,real:0},OYS:{meta:750,real:0}}}},
   {id:'HC3',        nome:'HC3',        tipo:'CLT',   meta:{EMP:10000,    JUR:1500,   OYS:2250},
-   meses:{1:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},2:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},3:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},4:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},5:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},6:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},7:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},8:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},9:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},10:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},11:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},12:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}}}},
+   meses:{1:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},2:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},3:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},4:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},5:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},6:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},7:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},8:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},9:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},10:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},11:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},12:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}}}},
   {id:'HC4',        nome:'HC4',        tipo:'CLT',   meta:{EMP:10000,    JUR:1500,   OYS:2250},
-   meses:{1:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},2:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},3:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},4:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},5:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},6:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},7:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},8:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},9:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},10:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},11:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},12:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}}}}
+   meses:{1:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},2:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},3:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},4:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},5:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},6:{EMP:{meta:0,real:0},JUR:{meta:0,real:0},OYS:{meta:0,real:0}},7:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},8:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},9:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},10:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},11:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}},12:{EMP:{meta:833,real:0},JUR:{meta:125,real:0},OYS:{meta:187,real:0}}}}
 ];
 
 const FC_INICIAL = [
@@ -482,49 +493,133 @@ let state = {
   sortResultados: 'default',
   fcFiltroMes: '',
   fcFiltroData: '',
-  fcFiltroGestor: ''
+  fcFiltroGestor: '',
+  timeAtivo: 'base'
 };
 let dados = null;
 let charts = {};
+
+function getStorageKey() { return 'painel_meta_2026_' + state.timeAtivo; }
+
+function buildMetaTimeFromExecs(execs) {
+  const r = {};
+  for (let m = 1; m <= 12; m++) {
+    r[m] = { EMP: 0, JUR: 0, OYS: 0 };
+    (execs || []).forEach(e => {
+      const md = (e.meses || {})[m] || { EMP:{meta:0}, JUR:{meta:0}, OYS:{meta:0} };
+      r[m].EMP += md.EMP.meta || 0;
+      r[m].JUR += md.JUR.meta || 0;
+      r[m].OYS += md.OYS.meta || 0;
+    });
+  }
+  return r;
+}
+
+function emptyMetaTime() {
+  const r = {};
+  for (let m = 1; m <= 12; m++) r[m] = { EMP: 0, JUR: 0, OYS: 0 };
+  return r;
+}
+
+function getMetaTimeMes(m, p) {
+  const mt = (dados.metaTime || {})[m] || { EMP: 0, JUR: 0, OYS: 0 };
+  if (p === 'TOTAL') return mt.EMP + mt.JUR + mt.OYS;
+  return mt[p] || 0;
+}
+
+function ytdMetaTime(p, ate) {
+  let t = 0;
+  for (let m = 1; m <= ate; m++) t += getMetaTimeMes(m, p);
+  return t;
+}
+
+function setMetaTime(m, p, val) {
+  if (!dados.metaTime) dados.metaTime = emptyMetaTime();
+  if (!dados.metaTime[m]) dados.metaTime[m] = { EMP: 0, JUR: 0, OYS: 0 };
+  dados.metaTime[m][p] = parseFloat(val) || 0;
+  salvar();
+}
+
+function recalcMetaTime() {
+  dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
+  salvar();
+  renderDados();
+  toast('Metas do time recalculadas da soma dos executivos.');
+}
 
 // =====================================================================
 // INIT
 // =====================================================================
 function initDados() {
-  const saved = localStorage.getItem('painel_meta_2026');
+  // Restaura time ativo e migra chave legada (painel_meta_2026 → painel_meta_2026_base)
+  state.timeAtivo = localStorage.getItem('painel_meta_2026_time') || 'base';
+  const legacy = localStorage.getItem('painel_meta_2026');
+  if (legacy && !localStorage.getItem('painel_meta_2026_base')) {
+    localStorage.setItem('painel_meta_2026_base', legacy);
+  }
+
+  const saved = localStorage.getItem(getStorageKey());
   if (saved) {
     try {
       dados = JSON.parse(saved);
-      if (!dados.forecast) dados.forecast = FC_INICIAL;
+      if (!dados.forecast) dados.forecast = state.timeAtivo === 'base' ? JSON.parse(JSON.stringify(FC_INICIAL)) : [];
       if (!dados.anoAtivo) dados.anoAtivo = 2026;
       if (!dados.historico) dados.historico = {
         2025: { ytd: HIST_2025.ytd, meses: Object.assign({}, HIST_2025.meses), tri1: HIST_2025.tri1, tri2: HIST_2025.tri2, tri3: 0, tri4: 0 }
       };
+      // Migração: zerar meta jun (mês 6) de HC3 e HC4 — executada uma única vez
+      if (!dados._migratedHcJune && dados.executivos) {
+        ['HC3','HC4'].forEach(id => {
+          const e = dados.executivos.find(ex => ex.id === id);
+          if (e) for (let m = 1; m <= 6; m++) {
+            const md = e.meses?.[m];
+            if (md) { md.EMP.meta = 0; md.JUR.meta = 0; md.OYS.meta = 0; }
+          }
+        });
+        dados._migratedHcJune = true;
+        dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
+      }
+      if (!dados.metaTime) dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
       dados.forecast.forEach(f => {
         if (f.status    === undefined) f.status    = 'open';
         if (f.gestor    === undefined) f.gestor    = '';
         if (f.valorGanho=== undefined) f.valorGanho= 0;
       });
-      // Corrige IDs duplicados ou ausentes e calibra nextFcId
       const maxId = dados.forecast.reduce((mx, f) => Math.max(mx, f.id || 0), 0);
       if (maxId >= state.nextFcId) state.nextFcId = maxId + 1;
       fixForecastIds();
       return;
     } catch(e) {}
   }
+  // Inicialização em branco para o time ativo
+  const isBase = state.timeAtivo === 'base';
   dados = {
     anoAtivo: 2026,
     historico: {
       2025: { ytd: HIST_2025.ytd, meses: Object.assign({}, HIST_2025.meses), tri1: HIST_2025.tri1, tri2: HIST_2025.tri2, tri3: 0, tri4: 0 }
     },
-    executivos: JSON.parse(JSON.stringify(EXEC_INICIAL)),
-    forecast: JSON.parse(JSON.stringify(FC_INICIAL))
+    executivos: JSON.parse(JSON.stringify(isBase ? EXEC_INICIAL : [])),
+    forecast:   JSON.parse(JSON.stringify(isBase ? FC_INICIAL   : []))
   };
+  dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
   salvar();
 }
 
+function switchTime(t) {
+  if (t === state.timeAtivo) return;
+  salvar();
+  state.timeAtivo = t;
+  localStorage.setItem('painel_meta_2026_time', t);
+  state.nextFcId = 100;
+  state.fcFiltroMes = ''; state.fcFiltroData = ''; state.fcFiltroGestor = '';
+  initDados();
+  updateYearUI();
+  renderView();
+  toast(`📊 Equipe: ${t === 'base' ? 'Vendas Base' : 'Vendas Novas'}`);
+}
+
 function salvar() {
-  localStorage.setItem('painel_meta_2026', JSON.stringify(dados));
+  localStorage.setItem(getStorageKey(), JSON.stringify(dados));
   document.getElementById('save-dot').textContent = '● Salvo';
   document.getElementById('save-dot').style.color = '#10b981';
   if (_fbAuth?.currentUser) syncToFirestore();
@@ -678,6 +773,10 @@ function updateYearUI() {
   document.title = `Painel Comercial · Meta ${ano}`;
   const el = document.getElementById('sidebar-ano');
   if (el) el.textContent = `Meta ${ano} · Starian`;
+  ['base','novas'].forEach(t => {
+    const btn = document.getElementById(`team-btn-${t}`);
+    if (btn) btn.classList.toggle('active', t === state.timeAtivo);
+  });
 }
 
 function transicionarAno(novoAno, copiarMetas) {
@@ -809,12 +908,12 @@ function renderDashboard() {
   const execs = dados.executivos;
   const mEff = mesEfetivo(m);
 
-  // Per-month values (always based on effective month)
-  const metaMes = execs.reduce((s, e) => s + totalMeta(e, mEff, p), 0);
+  // Meta do time: usa metaTime (valor mensal da planilha), não soma individual
+  const metaMes = getMetaTimeMes(mEff, p);
   const realMes = execs.reduce((s, e) => s + totalReal(e, mEff, p), 0);
 
   // YTD accumulated through mEff
-  const ytdM = execs.reduce((s, e) => s + ytdMeta(e, p, mEff), 0);
+  const ytdM = ytdMetaTime(p, mEff);
   const ytdR = execs.reduce((s, e) => s + ytdReal(e, p, mEff), 0);
   const pctYtd = pct(ytdR, ytdM);
 
@@ -1935,10 +2034,54 @@ function renderDados() {
   </div>
 </div>
 <div class="config-section">
-  <h3>💾 Exportar / Importar Dados</h3>
-  <p>Exporte os dados para compartilhar com o time via OneDrive. Qualquer pessoa com o arquivo JSON pode importar e ver os dados atualizados.</p>
+  <h3>📊 Exportar / Importar Excel</h3>
+  <p>Exporte os dados para Excel com abas <strong>Metas_Realizados</strong>, <strong>Meta_Time</strong> e <strong>Forecast</strong>. Use para preencher metas em massa e reimportar — inclusive para o time de Vendas Novas.</p>
+  <div class="btn-row" style="flex-wrap:wrap;gap:8px">
+    <button class="btn btn-success" onclick="exportarExcel()">⬇ Exportar para Excel (.xlsx)</button>
+    <button class="btn btn-outline" onclick="exportarModeloExcel()">📋 Baixar planilha modelo</button>
+    <button class="btn btn-primary" onclick="document.getElementById('importFileXlsx').click()">⬆ Importar do Excel (.xlsx)</button>
+  </div>
+  <input type="file" id="importFileXlsx" accept=".xlsx,.xls" style="display:none" onchange="importarExcel(this)">
+  <p style="margin-top:10px;font-size:12px;color:var(--text-secondary)">Colunas esperadas na aba <em>Metas_Realizados</em>: Vendedor · Canal · Tipo · Mes · Meta_EMP · Meta_JUR · Meta_OYS · Real_EMP · Real_JUR · Real_OYS</p>
+</div>
+<div class="config-section">
+  <h3>🎯 Meta Mensal do Time — ${state.timeAtivo === 'novas' ? 'Vendas Novas' : 'Vendas Base'}</h3>
+  <p style="margin-bottom:12px">Defina a meta mensal da equipe como um todo. Esses valores são exibidos nos KPIs do Dashboard em vez da soma individual dos executivos.</p>
+  <table class="dt" style="max-width:600px">
+    <thead><tr>
+      <th>Mês</th><th class="right">Meta Empresas</th><th class="right">Meta Jurimetria</th><th class="right">Meta Oystr</th><th class="right">Total</th>
+    </tr></thead>
+    <tbody>
+    ${Array.from({length:12},(_,i)=>i+1).map(m => {
+      const mt = (dados.metaTime||{})[m]||{EMP:0,JUR:0,OYS:0};
+      return `<tr>
+        <td><strong>${MESES_NOMES[m]}</strong></td>
+        <td class="right"><input type="number" value="${mt.EMP}" min="0" step="100" style="width:110px;text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px" onchange="setMetaTime(${m},'EMP',this.value)"></td>
+        <td class="right"><input type="number" value="${mt.JUR}" min="0" step="100" style="width:110px;text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px" onchange="setMetaTime(${m},'JUR',this.value)"></td>
+        <td class="right"><input type="number" value="${mt.OYS}" min="0" step="100" style="width:110px;text-align:right;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:13px" onchange="setMetaTime(${m},'OYS',this.value)"></td>
+        <td class="right" style="font-weight:600">${R(mt.EMP+mt.JUR+mt.OYS)}</td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+    <tfoot><tr class="total-row">
+      <td><strong>Anual</strong></td>
+      ${['EMP','JUR','OYS'].map(p => {
+        const tot = Array.from({length:12},(_,i)=>i+1).reduce((s,m)=>s+((dados.metaTime||{})[m]?.[p]||0),0);
+        return `<td class="right">${R(tot)}</td>`;
+      }).join('')}
+      <td class="right">${R(Array.from({length:12},(_,i)=>i+1).reduce((s,m)=>{const mt=(dados.metaTime||{})[m]||{EMP:0,JUR:0,OYS:0};return s+mt.EMP+mt.JUR+mt.OYS;},0))}</td>
+    </tr></tfoot>
+  </table>
+  <p style="margin-top:10px;font-size:12px;color:var(--text-secondary)">💡 Dica: use "Calcular da soma dos executivos" para preencher automaticamente, ou importe via Excel.</p>
+  <div class="btn-row" style="margin-top:8px">
+    <button class="btn btn-outline btn-sm" onclick="recalcMetaTime()">↻ Calcular da soma dos executivos</button>
+  </div>
+</div>
+<div class="config-section">
+  <h3>💾 Exportar / Importar JSON</h3>
+  <p>Backup completo dos dados em formato JSON.</p>
   <div class="btn-row">
-    <button class="btn btn-primary" onclick="exportarJSON()">⬇ Exportar dados (.json)</button>
+    <button class="btn btn-outline" onclick="exportarJSON()">⬇ Exportar dados (.json)</button>
     <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">⬆ Importar dados (.json)</button>
   </div>
   <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarJSON(this)">
@@ -1993,6 +2136,141 @@ function exportarJSON() {
   toast('Dados exportados com sucesso!');
 }
 
+function exportarExcel() {
+  if (typeof XLSX === 'undefined') { toast('Biblioteca Excel não carregada. Verifique sua conexão.'); return; }
+  const wb = XLSX.utils.book_new();
+
+  // Aba 1: Metas e Realizados por executivo/mês
+  const rows1 = [['Vendedor','Canal','Tipo','Mes','Meta_EMP','Meta_JUR','Meta_OYS','Real_EMP','Real_JUR','Real_OYS']];
+  dados.executivos.forEach(e => {
+    for (let m = 1; m <= 12; m++) {
+      const md = getMes(e, m);
+      rows1.push([e.nome, e.id, e.tipo, m, md.EMP.meta, md.JUR.meta, md.OYS.meta, md.EMP.real, md.JUR.real, md.OYS.real]);
+    }
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows1), 'Metas_Realizados');
+
+  // Aba 2: Meta mensal do time
+  const rows2 = [['Mes','Mes_Nome','Meta_EMP_Time','Meta_JUR_Time','Meta_OYS_Time','Total_Time']];
+  for (let m = 1; m <= 12; m++) {
+    const mt = (dados.metaTime || {})[m] || {EMP:0,JUR:0,OYS:0};
+    rows2.push([m, MESES_NOMES[m], mt.EMP, mt.JUR, mt.OYS, mt.EMP+mt.JUR+mt.OYS]);
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows2), 'Meta_Time');
+
+  // Aba 3: Forecast
+  const rows3 = [['ID','Executivo','Empresa','Valor','Data','Gestor','Status','Valor_Ganho','Ganho_EMP','Ganho_JUR','Ganho_OYS']];
+  dados.forecast.forEach(f => {
+    rows3.push([f.id, f.exec, f.empresa, f.valor, f.data||'', f.gestor||'', f.status||'open', f.valorGanho||0, f.ganhoEMP||0, f.ganhoJUR||0, f.ganhoOYS||0]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows3), 'Forecast');
+
+  const time = state.timeAtivo === 'novas' ? 'novas' : 'base';
+  XLSX.writeFile(wb, `meta-${dados.anoAtivo||2026}-${time}.xlsx`);
+  toast('Excel exportado com sucesso!');
+}
+
+function exportarModeloExcel() {
+  if (typeof XLSX === 'undefined') { toast('Biblioteca Excel não carregada.'); return; }
+  const wb = XLSX.utils.book_new();
+  const rows1 = [['Vendedor','Canal','Tipo','Mes','Meta_EMP','Meta_JUR','Meta_OYS','Real_EMP','Real_JUR','Real_OYS'],
+                 ['Exemplo Vendedor','CANAL_ID','CLT',1,10000,1500,2000,0,0,0]];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows1), 'Metas_Realizados');
+  const rows2 = [['Mes','Mes_Nome','Meta_EMP_Time','Meta_JUR_Time','Meta_OYS_Time','Total_Time']];
+  for (let m = 1; m <= 12; m++) rows2.push([m, MESES_NOMES[m], 0, 0, 0, 0]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows2), 'Meta_Time');
+  XLSX.writeFile(wb, `modelo-metas-${dados.anoAtivo||2026}.xlsx`);
+  toast('Modelo Excel exportado!');
+}
+
+function importarExcel(input) {
+  if (typeof XLSX === 'undefined') { toast('Biblioteca Excel não carregada.'); return; }
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'array' });
+
+      // Aba Metas_Realizados (ou primeira aba)
+      const wsName = wb.SheetNames.find(n => n.includes('Meta') || n.includes('Real')) || wb.SheetNames[0];
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wsName], { header: 1 });
+      const hdr = (rows[0] || []).map(h => String(h||'').trim().toLowerCase());
+      const ci = n => hdr.findIndex(h => h.includes(n));
+      const iNome=ci('vendedor'), iMes=ci('mes'), iCanal=ci('canal'), iTipo=ci('tipo');
+      const iMEMP=ci('meta_emp'), iMJUR=ci('meta_jur'), iMOYS=ci('meta_oys');
+      const iREMP=ci('real_emp'), iRJUR=ci('real_jur'), iROYS=ci('real_oys');
+
+      const execMap = {};
+      dados.executivos.forEach(e => { execMap[e.nome.toUpperCase()] = e; execMap[e.id.toUpperCase()] = e; });
+      let updated = 0, adicionados = 0;
+
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || r[iNome] == null) continue;
+        const nome = String(r[iNome]).trim();
+        const mes  = parseInt(r[iMes]);
+        if (!nome || !mes || mes < 1 || mes > 12) continue;
+
+        let exec = execMap[nome.toUpperCase()];
+        if (!exec) {
+          const id  = nome.replace(/\s+/g,'_').toUpperCase().substring(0,10);
+          const canal = iCanal >= 0 ? String(r[iCanal]||'').trim() : '';
+          const tipo  = iTipo  >= 0 ? String(r[iTipo] ||'CLT').trim() : 'CLT';
+          exec = { id, nome, tipo, meta:{EMP:0,JUR:0,OYS:0}, meses:{} };
+          dados.executivos.push(exec);
+          execMap[nome.toUpperCase()] = exec;
+          adicionados++;
+        }
+
+        const md = getMes(exec, mes);
+        if (iMEMP>=0 && r[iMEMP]!==undefined && r[iMEMP]!=='') md.EMP.meta = parseFloat(r[iMEMP])||0;
+        if (iMJUR>=0 && r[iMJUR]!==undefined && r[iMJUR]!=='') md.JUR.meta = parseFloat(r[iMJUR])||0;
+        if (iMOYS>=0 && r[iMOYS]!==undefined && r[iMOYS]!=='') md.OYS.meta = parseFloat(r[iMOYS])||0;
+        if (iREMP>=0 && r[iREMP]!==undefined && r[iREMP]!=='') md.EMP.real = parseFloat(r[iREMP])||0;
+        if (iRJUR>=0 && r[iRJUR]!==undefined && r[iRJUR]!=='') md.JUR.real = parseFloat(r[iRJUR])||0;
+        if (iROYS>=0 && r[iROYS]!==undefined && r[iROYS]!=='') md.OYS.real = parseFloat(r[iROYS])||0;
+        updated++;
+      }
+
+      // Recalcula totais anuais de cada executivo
+      dados.executivos.forEach(e => {
+        e.meta.EMP = 0; e.meta.JUR = 0; e.meta.OYS = 0;
+        for (let m = 1; m <= 12; m++) {
+          const md = getMes(e, m);
+          e.meta.EMP += md.EMP.meta; e.meta.JUR += md.JUR.meta; e.meta.OYS += md.OYS.meta;
+        }
+      });
+
+      // Aba Meta_Time (opcional)
+      const wsTimeName = wb.SheetNames.find(n => n.toLowerCase().includes('time'));
+      if (wsTimeName) {
+        const rowsT = XLSX.utils.sheet_to_json(wb.Sheets[wsTimeName], { header: 1 });
+        const hT = (rowsT[0]||[]).map(h => String(h||'').trim().toLowerCase());
+        const cM=hT.findIndex(h=>h==='mes'), cE=hT.findIndex(h=>h.includes('emp')), cJ=hT.findIndex(h=>h.includes('jur')), cO=hT.findIndex(h=>h.includes('oys'));
+        if (!dados.metaTime) dados.metaTime = emptyMetaTime();
+        for (let i = 1; i < rowsT.length; i++) {
+          const r = rowsT[i]; const m = parseInt(r[cM]);
+          if (!m||m<1||m>12) continue;
+          if (cE>=0&&r[cE]!==undefined) dados.metaTime[m].EMP = parseFloat(r[cE])||0;
+          if (cJ>=0&&r[cJ]!==undefined) dados.metaTime[m].JUR = parseFloat(r[cJ])||0;
+          if (cO>=0&&r[cO]!==undefined) dados.metaTime[m].OYS = parseFloat(r[cO])||0;
+        }
+      } else {
+        dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
+      }
+
+      salvar(); renderView();
+      toast(`Excel importado! ${updated} registros${adicionados ? ` · ${adicionados} novos vendedores` : ''}.`);
+    } catch(err) {
+      console.error('importarExcel:', err);
+      toast('Erro ao importar Excel: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
 function importarJSON(input) {
   const file = input.files[0];
   if (!file) return;
@@ -2002,6 +2280,7 @@ function importarJSON(input) {
       const imported = JSON.parse(e.target.result);
       if (!imported.executivos) throw new Error('Formato inválido');
       dados = imported;
+      if (!dados.metaTime) dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
       salvar();
       renderView();
       toast('Dados importados com sucesso!');
@@ -2217,7 +2496,7 @@ async function syncToFirestore() {
   if (!_fbDb || !_fbAuth?.currentUser) return;
   setFbSyncDot('syncing');
   try {
-    await _fbDb.doc('dados/principal').set(JSON.parse(JSON.stringify(dados)));
+    await _fbDb.doc(`dados_${state.timeAtivo}/principal`).set(JSON.parse(JSON.stringify(dados)));
     setFbSyncDot('ok');
   } catch(e) { setFbSyncDot('err'); console.error('syncToFirestore:', e); }
 }
@@ -2226,9 +2505,13 @@ async function syncFromFirestore() {
   if (!_fbDb || !_fbAuth?.currentUser) return;
   setFbSyncDot('syncing');
   try {
-    const snap = await _fbDb.doc('dados/principal').get();
+    const docPath = `dados_${state.timeAtivo}/principal`;
+    let snap = await _fbDb.doc(docPath).get();
+    // Migração: se base não tem dados no novo caminho, tenta o caminho legado
+    if (!snap.exists && state.timeAtivo === 'base') {
+      snap = await _fbDb.doc('dados/principal').get();
+    }
     if (!snap.exists) {
-      // Primeiro acesso — salva os dados locais no Firestore
       await syncToFirestore();
       return;
     }
@@ -2238,18 +2521,17 @@ async function syncFromFirestore() {
     if (!dados.anoAtivo) dados.anoAtivo = 2026;
     if (!dados.historico) dados.historico = { 2025: { ytd: HIST_2025.ytd, meses: Object.assign({}, HIST_2025.meses), tri1: HIST_2025.tri1, tri2: HIST_2025.tri2, tri3: 0, tri4: 0 } };
     if (!dados.forecast) dados.forecast = [];
+    if (!dados.metaTime) dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
     dados.forecast.forEach(f => {
       if (f.status    === undefined) f.status    = 'open';
       if (f.gestor    === undefined) f.gestor    = '';
       if (f.valorGanho=== undefined) f.valorGanho= 0;
     });
-    // Corrige IDs duplicados ou ausentes e calibra nextFcId
     const maxId = dados.forecast.reduce((mx, f) => Math.max(mx, f.id || 0), 0);
     if (maxId >= state.nextFcId) state.nextFcId = maxId + 1;
     fixForecastIds();
-    localStorage.setItem('painel_meta_2026', JSON.stringify(dados));
-    // Persiste IDs corrigidos no Firestore imediatamente
-    await _fbDb.doc('dados/principal').set(JSON.parse(JSON.stringify(dados)));
+    localStorage.setItem(getStorageKey(), JSON.stringify(dados));
+    await _fbDb.doc(docPath).set(JSON.parse(JSON.stringify(dados)));
     updateYearUI();
     renderView();
     setFbSyncDot('ok');
@@ -2404,7 +2686,8 @@ async function syncFromM365() {
       if (f.gestor    === undefined) f.gestor    = '';
       if (f.valorGanho=== undefined) f.valorGanho= 0;
     });
-    localStorage.setItem('painel_meta_2026', JSON.stringify(dados));
+    if (!dados.metaTime) dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
+    localStorage.setItem(getStorageKey(), JSON.stringify(dados));
     updateYearUI();
     renderView();
     toast('Dados carregados do SharePoint! ☁');
