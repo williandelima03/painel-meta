@@ -1,0 +1,11 @@
+﻿{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "painel-meta-2026",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-ExecutionPolicy", "Bypass", "-NonInteractive", "-File", "server.ps1"],
+      "port": 3501
+    }
+  ]
+}

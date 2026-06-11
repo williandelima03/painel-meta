@@ -10,45 +10,62 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root {
-  --sidebar-bg: #0f172a;
-  --sidebar-text: #94a3b8;
-  --sidebar-active: #3b82f6;
-  --content-bg: #f1f5f9;
+  --sidebar-bg: #0b1220;
+  --sidebar-text: #8a96ad;
+  --sidebar-active: #6366f1;
+  --content-bg: #eef1f8;
   --card-bg: #ffffff;
   --text-primary: #0f172a;
   --text-secondary: #64748b;
-  --border: #e2e8f0;
+  --border: #e4e8f1;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
-  --blue: #3b82f6;
+  --blue: #4f6ef7;
+  --accent-grad: linear-gradient(135deg, #4f6ef7 0%, #7c3aed 100%);
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.05);
+  --shadow-md: 0 4px 16px -4px rgba(15,23,42,0.10);
+  --shadow-lg: 0 12px 32px -8px rgba(15,23,42,0.18);
+  --radius: 14px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--content-bg); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
+body { font-family: 'Inter', 'Segoe UI', Arial, sans-serif; background: var(--content-bg); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; font-feature-settings: 'tnum'; }
 
-.sidebar { width: 220px; background: var(--sidebar-bg); display: flex; flex-direction: column; flex-shrink: 0; }
-.sidebar-logo { padding: 20px 16px 16px; border-bottom: 1px solid #1e2d3d; }
-.sidebar-logo h1 { color: #fff; font-size: 15px; font-weight: 700; line-height: 1.3; }
-.sidebar-logo p { color: var(--sidebar-text); font-size: 11px; margin-top: 3px; }
-.nav-section { padding: 8px 0; }
-.nav-label { padding: 10px 16px 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #475569; }
-.nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 16px; cursor: pointer; color: var(--sidebar-text); font-size: 13px; transition: all 0.15s; border-left: 3px solid transparent; user-select: none; }
-.nav-item:hover { color: #fff; background: rgba(255,255,255,0.05); }
-.nav-item.active { color: #fff; background: rgba(59,130,246,0.15); border-left-color: var(--sidebar-active); }
-.nav-icon { font-size: 15px; width: 18px; text-align: center; }
-.nav-bottom { margin-top: auto; border-top: 1px solid #1e2d3d; padding-top: 4px; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.content > * { animation: fadeUp 0.35s ease both; }
+.content > *:nth-child(2) { animation-delay: 0.05s; }
+.content > *:nth-child(3) { animation-delay: 0.10s; }
+.content > *:nth-child(4) { animation-delay: 0.15s; }
+
+.sidebar { width: 230px; background: linear-gradient(180deg, #0b1220 0%, #101a30 55%, #131f3a 100%); display: flex; flex-direction: column; flex-shrink: 0; position: relative; }
+.sidebar::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(420px 220px at -20% -10%, rgba(99,102,241,0.22), transparent 70%); }
+.sidebar > * { position: relative; z-index: 1; }
+.sidebar-logo { padding: 22px 18px 18px; border-bottom: 1px solid rgba(148,163,184,0.12); }
+.sidebar-logo h1 { color: #fff; font-size: 15px; font-weight: 800; line-height: 1.3; letter-spacing: -0.2px; }
+.sidebar-logo h1::before { content: '◆ '; background: var(--accent-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.sidebar-logo p { color: var(--sidebar-text); font-size: 11px; margin-top: 4px; }
+.nav-section { padding: 10px 10px; }
+.nav-label { padding: 10px 10px 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: #4b5a76; font-weight: 700; }
+.nav-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; margin: 2px 0; cursor: pointer; color: var(--sidebar-text); font-size: 13px; font-weight: 500; transition: all 0.18s; border-radius: 10px; user-select: none; }
+.nav-item:hover { color: #fff; background: rgba(255,255,255,0.06); transform: translateX(2px); }
+.nav-item.active { color: #fff; background: linear-gradient(135deg, rgba(79,110,247,0.28), rgba(124,58,237,0.20)); box-shadow: inset 0 0 0 1px rgba(124,108,247,0.35), 0 4px 14px -6px rgba(79,110,247,0.5); font-weight: 600; }
+.nav-icon { font-size: 15px; width: 20px; text-align: center; }
+.nav-bottom { margin-top: auto; border-top: 1px solid rgba(148,163,184,0.12); padding: 8px 10px 12px; }
 
 .main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-.topbar { padding: 14px 24px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-.topbar h2 { font-size: 17px; font-weight: 600; }
+.topbar { padding: 13px 24px; background: rgba(255,255,255,0.85); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.topbar h2 { font-size: 17px; font-weight: 800; letter-spacing: -0.3px; }
 .topbar-right { display: flex; align-items: center; gap: 12px; }
-.team-switcher { display: flex; background: #1e293b; border-radius: 10px; padding: 3px; gap: 2px; }
-.team-btn { padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; color: #94a3b8; background: transparent; transition: all 0.15s; white-space: nowrap; user-select: none; letter-spacing: 0.2px; }
+.team-switcher { display: flex; background: #131c30; border-radius: 12px; padding: 3px; gap: 2px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.35); }
+.team-btn { padding: 7px 16px; border-radius: 9px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; color: #8a96ad; background: transparent; transition: all 0.18s; white-space: nowrap; user-select: none; letter-spacing: 0.2px; }
 .team-btn.active { color: white; }
-.team-btn.base.active { background: #3b82f6; box-shadow: 0 1px 6px rgba(59,130,246,0.5); }
-.team-btn.novas.active { background: #10b981; box-shadow: 0 1px 6px rgba(16,185,129,0.5); }
+.team-btn.base.active { background: linear-gradient(135deg, #4f6ef7, #6d4df7); box-shadow: 0 2px 10px rgba(79,110,247,0.55); }
+.team-btn.novas.active { background: linear-gradient(135deg, #10b981, #0d9488); box-shadow: 0 2px 10px rgba(16,185,129,0.55); }
 .team-btn:not(.active):hover { background: rgba(255,255,255,0.08); color: #e2e8f0; }
 .produto-tabs { display: flex; gap: 2px; background: #f1f5f9; border-radius: 8px; padding: 3px; }
 .produto-tab { padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; color: var(--text-secondary); transition: all 0.15s; white-space: nowrap; user-select: none; }
@@ -56,13 +73,14 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--content-bg)
 .mes-selector { display: flex; align-items: center; gap: 6px; background: var(--content-bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; font-size: 13px; }
 .mes-selector select { border: none; background: transparent; font-size: 13px; color: var(--text-primary); outline: none; cursor: pointer; }
 .save-dot { font-size: 11px; color: #10b981; display: flex; align-items: center; gap: 3px; }
-.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; }
-.btn-primary { background: var(--blue); color: white; }
-.btn-primary:hover { background: #2563eb; }
-.btn-success { background: #10b981; color: white; }
-.btn-success:hover { background: #059669; }
-.btn-outline { background: white; color: var(--text-primary); border: 1px solid var(--border); }
-.btn-outline:hover { background: var(--content-bg); }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 15px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.18s; font-family: inherit; }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent-grad); color: white; box-shadow: 0 3px 12px -3px rgba(79,110,247,0.55); }
+.btn-primary:hover { filter: brightness(1.08); box-shadow: 0 6px 18px -4px rgba(79,110,247,0.65); transform: translateY(-1px); }
+.btn-success { background: linear-gradient(135deg, #10b981, #0d9488); color: white; box-shadow: 0 3px 12px -3px rgba(16,185,129,0.5); }
+.btn-success:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.btn-outline { background: white; color: var(--text-primary); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.btn-outline:hover { background: #f8fafc; border-color: #c7d0e0; transform: translateY(-1px); }
 .btn-danger { background: #fee2e2; color: #991b1b; border: none; }
 .btn-danger:hover { background: #fecaca; }
 .btn-sm { padding: 4px 10px; font-size: 12px; }
@@ -70,9 +88,11 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--content-bg)
 .content { padding: 20px 24px 24px; flex: 1; overflow-y: auto; }
 
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 14px; margin-bottom: 20px; }
-.kpi-card { background: white; border-radius: 12px; padding: 18px 20px; border: 1px solid var(--border); }
-.kpi-label { font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-.kpi-value { font-size: 24px; font-weight: 700; margin: 6px 0 4px; line-height: 1; }
+.kpi-card { background: white; border-radius: var(--radius); padding: 18px 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); position: relative; overflow: hidden; transition: all 0.2s; }
+.kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent-grad); opacity: 0.85; }
+.kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+.kpi-label { font-size: 11px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; }
+.kpi-value { font-size: 25px; font-weight: 800; margin: 7px 0 4px; line-height: 1; letter-spacing: -0.5px; }
 .kpi-sub { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; margin-top: 4px; }
 .badge { display: inline-block; padding: 2px 7px; border-radius: 20px; font-size: 11px; font-weight: 600; }
 .badge-green { background: #d1fae5; color: #065f46; }
@@ -80,13 +100,14 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--content-bg)
 .badge-red { background: #fee2e2; color: #991b1b; }
 
 .charts-grid { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; margin-bottom: 20px; }
-.chart-card { background: white; border-radius: 12px; padding: 18px 20px; border: 1px solid var(--border); }
-.chart-title { font-size: 13px; font-weight: 600; margin-bottom: 14px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.chart-card { background: white; border-radius: var(--radius); padding: 18px 20px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); transition: box-shadow 0.2s; }
+.chart-card:hover { box-shadow: var(--shadow-md); }
+.chart-title { font-size: 12px; font-weight: 700; margin-bottom: 14px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.7px; }
 .chart-wrap { position: relative; }
 
-.section-card { background: white; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; margin-bottom: 16px; }
-.section-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-.section-head-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+.section-card { background: white; border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
+.section-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: linear-gradient(180deg, #fbfcfe, #f7f9fd); }
+.section-head-title { font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.7px; }
 .section-head-right { display: flex; align-items: center; gap: 8px; }
 
 table.dt { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -158,7 +179,7 @@ table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2p
 
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; }
 .modal-overlay.open { display: flex; }
-.modal { background: white; border-radius: 14px; padding: 24px; width: 460px; max-width: 92vw; box-shadow: 0 25px 50px rgba(0,0,0,0.25); }
+.modal { background: white; border-radius: 18px; padding: 26px; width: 460px; max-width: 92vw; box-shadow: 0 32px 64px -12px rgba(15,23,42,0.4); animation: fadeUp 0.25s ease; }
 .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 18px; }
 .form-row { margin-bottom: 14px; }
 .form-label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; }
@@ -166,17 +187,18 @@ table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2p
 .form-input:focus, .form-select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
 .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
 
-.toast { position: fixed; bottom: 24px; right: 24px; background: #0f172a; color: white; padding: 11px 18px; border-radius: 8px; font-size: 13px; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-.toast.show { opacity: 1; }
+.toast { position: fixed; bottom: 24px; right: 24px; background: linear-gradient(135deg, #0f172a, #1e2a47); color: white; padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 500; z-index: 200; opacity: 0; transform: translateY(8px); transition: all 0.3s; pointer-events: none; box-shadow: var(--shadow-lg); border: 1px solid rgba(124,108,247,0.3); }
+.toast.show { opacity: 1; transform: translateY(0); }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #c3cce0; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #9aa8c7; }
 
 .empty-state { text-align: center; padding: 40px 20px; color: var(--text-secondary); }
 .empty-state p { font-size: 14px; }
 
-.config-section { background: white; border-radius: 12px; border: 1px solid var(--border); padding: 20px; margin-bottom: 16px; }
+.config-section { background: white; border-radius: var(--radius); border: 1px solid var(--border); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow-sm); }
 .config-section h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
 .config-section p { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.6; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -286,6 +308,7 @@ table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2p
     <div class="nav-item" data-view="resultados" onclick="setView('resultados')"><span class="nav-icon">📋</span>Resultados</div>
     <div class="nav-item" data-view="ranking" onclick="setView('ranking')"><span class="nav-icon">🏆</span>Ranking</div>
     <div class="nav-item" data-view="forecast" onclick="setView('forecast')"><span class="nav-icon">🔭</span>Forecast</div>
+    <div class="nav-item" data-view="hubspot" onclick="setView('hubspot')"><span class="nav-icon">🧲</span>HubSpot</div>
     <div class="nav-item" data-view="historico" onclick="setView('historico')"><span class="nav-icon">📈</span>Histórico</div>
   </div>
   <div class="nav-bottom">
@@ -830,7 +853,7 @@ function transicionarAno(novoAno, copiarMetas) {
 function setView(v) {
   state.view = v;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.view === v));
-  const titles = {dashboard:'Dashboard',resultados:'Resultados por Mês',ranking:'Ranking de Executivos',forecast:'Forecast do Mês',historico:'Histórico & Comparativo Anual',dados:'Gerenciar Dados'};
+  const titles = {dashboard:'Dashboard',resultados:'Resultados por Mês',ranking:'Ranking de Executivos',forecast:'Forecast do Mês',hubspot:'HubSpot · Vendas Privadas',historico:'Histórico & Comparativo Anual',dados:'Gerenciar Dados'};
   document.getElementById('view-title').textContent = titles[v] || v;
   destroyCharts();
   renderView();
@@ -2034,6 +2057,26 @@ function renderDados() {
   </div>
 </div>
 <div class="config-section">
+  <h3>🧲 HubSpot — Pipeline Vendas Privadas</h3>
+  ${getHsToken()
+    ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px">
+        <span style="font-size:16px">✓</span>
+        <div><strong style="color:#9a3412">Token configurado</strong><br><span style="font-size:12px;color:#9a3412">Negócios filtrados por Oferta de Origem: ${HS_UNIDADE[state.timeAtivo]}</span></div>
+        <button class="btn btn-outline btn-sm" onclick="clearHsToken()" style="margin-left:auto">Remover token</button>
+       </div>
+       <div class="btn-row">
+         <button class="btn btn-primary" onclick="hsSync()">🔄 Sincronizar negócios agora</button>
+         <button class="btn btn-outline" onclick="setView('hubspot')">🧲 Abrir visão HubSpot</button>
+       </div>`
+    : `<p>Cole o token de um <strong>Private App</strong> do HubSpot (Configurações → Integrações → Private Apps) com escopos <code>crm.objects.deals.read</code> e <code>crm.objects.owners.read</code>. O painel busca os negócios do pipeline <strong>Vendas Privadas</strong> automaticamente, separados por time via campo Oferta de Origem.</p>
+       <div class="form-row" style="display:flex;gap:10px;align-items:center">
+         <input class="form-input" id="hs-token-input" type="password" placeholder="pat-na1-xxxxxxxx-..." style="max-width:420px">
+         <button class="btn btn-primary" onclick="saveHsToken()">💾 Salvar e sincronizar</button>
+       </div>
+       <p style="font-size:12px;color:var(--text-secondary)">⚠ Requer o painel rodando via <code>server.ps1</code> (http://localhost:3501) — o servidor local faz a ponte com a API do HubSpot.</p>`
+  }
+</div>
+<div class="config-section">
   <h3>📊 Exportar / Importar Excel</h3>
   <p>Exporte os dados para Excel com abas <strong>Metas_Realizados</strong>, <strong>Meta_Time</strong> e <strong>Forecast</strong>. Use para preencher metas em massa e reimportar — inclusive para o time de Vendas Novas.</p>
   <div class="btn-row" style="flex-wrap:wrap;gap:8px">
@@ -2339,7 +2382,7 @@ function restaurar() {
 // RENDER DISPATCHER
 // =====================================================================
 function renderView() {
-  const fn = {dashboard:renderDashboard, resultados:renderResultados, ranking:renderRanking, forecast:renderForecast, historico:renderHistorico, dados:renderDados};
+  const fn = {dashboard:renderDashboard, resultados:renderResultados, ranking:renderRanking, forecast:renderForecast, hubspot:renderHubspot, historico:renderHistorico, dados:renderDados};
   if (fn[state.view]) fn[state.view]();
 }
 
@@ -2706,6 +2749,283 @@ async function autoInitM365() {
     await syncFromM365();
   }
   updateM365Dot();
+}
+
+// =====================================================================
+// HUBSPOT — Integração Vendas Privadas
+// =====================================================================
+const HS_PIPELINE_ID = '129690470'; // Pipeline "Vendas Privadas"
+const HS_UNIDADE = { base: 'Empresas - Base', novas: 'Empresas - Vendas Novas' };
+let hsState = { mes: 0, syncing: false }; // 0 = todos os meses
+
+function getHsToken() { return localStorage.getItem('hs_token') || ''; }
+function saveHsToken() {
+  const t = document.getElementById('hs-token-input')?.value.trim();
+  if (!t) { toast('Cole o token do Private App HubSpot.'); return; }
+  localStorage.setItem('hs_token', t);
+  toast('Token HubSpot salvo! Sincronizando…');
+  hsSync();
+}
+function clearHsToken() {
+  localStorage.removeItem('hs_token');
+  if (state.view === 'hubspot') renderHubspot();
+  if (state.view === 'dados') renderDados();
+  toast('Token HubSpot removido.');
+}
+
+async function hsFetch(path, opts = {}) {
+  const resp = await fetch('/hs/' + path, {
+    method: opts.method || 'GET',
+    headers: { 'X-HS-Token': getHsToken(), 'Content-Type': 'application/json' },
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  const json = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    if (resp.status === 400 || resp.status === 401) throw new Error('Token HubSpot inválido ou expirado. Verifique na aba Dados.');
+    if (resp.status === 403) throw new Error('Token sem permissão. Adicione os escopos crm.objects.deals.read e crm.objects.owners.read.');
+    throw new Error(json.message || json.error || ('HTTP ' + resp.status));
+  }
+  return json;
+}
+
+async function hsSync() {
+  if (!getHsToken()) { toast('Configure o token HubSpot na aba Dados.'); setView('dados'); return; }
+  if (hsState.syncing) return;
+  hsState.syncing = true;
+  if (state.view === 'hubspot') renderHubspot();
+  try {
+    // 1. Estágios do pipeline (rótulo + classificação ganho/perdido)
+    const pipe = await hsFetch(`crm/v3/pipelines/deals/${HS_PIPELINE_ID}`);
+    const stages = {};
+    (pipe.stages || []).forEach(s => {
+      const prob = s.metadata?.probability;
+      stages[s.id] = {
+        label: s.label,
+        status: prob === '1.0' ? 'won' : (s.metadata?.isClosed === 'true' || s.metadata?.isClosed === true) && prob === '0.0' ? 'lost' : 'open'
+      };
+    });
+
+    // 2. Donos (owners)
+    const owners = {};
+    let ownAfter = '';
+    do {
+      const o = await hsFetch('crm/v3/owners/?limit=500' + (ownAfter ? '&after=' + ownAfter : ''));
+      (o.results || []).forEach(w => {
+        owners[w.id] = ((w.firstName || '') + ' ' + (w.lastName || '')).trim() || w.email || ('#' + w.id);
+      });
+      ownAfter = o.paging?.next?.after || '';
+    } while (ownAfter);
+
+    // 3. Negócios do pipeline filtrados por Oferta de Origem + ano ativo
+    const ano = dados.anoAtivo || 2026;
+    const ini = new Date(ano, 0, 1).getTime();
+    const fim = new Date(ano + 1, 0, 1).getTime() - 1;
+    const deals = [];
+    let after = '', pages = 0;
+    do {
+      const body = {
+        filterGroups: [{ filters: [
+          { propertyName: 'pipeline', operator: 'EQ', value: HS_PIPELINE_ID },
+          { propertyName: 'unidade_de_negocios', operator: 'EQ', value: HS_UNIDADE[state.timeAtivo] },
+          { propertyName: 'closedate', operator: 'GTE', value: String(ini) },
+          { propertyName: 'closedate', operator: 'LTE', value: String(fim) }
+        ]}],
+        properties: ['dealname', 'amount', 'closedate', 'dealstage', 'hubspot_owner_id'],
+        sorts: [{ propertyName: 'closedate', direction: 'ASCENDING' }],
+        limit: 200,
+        after: after || undefined
+      };
+      const r = await hsFetch('crm/v3/objects/deals/search', { method: 'POST', body });
+      (r.results || []).forEach(d => {
+        const p = d.properties || {};
+        const st = stages[p.dealstage] || { label: p.dealstage, status: 'open' };
+        deals.push({
+          hsId: d.id,
+          nome: p.dealname || '(sem nome)',
+          valor: parseFloat(p.amount) || 0,
+          data: p.closedate ? p.closedate.substring(0, 10) : '',
+          stage: st.label,
+          status: st.status,
+          owner: owners[p.hubspot_owner_id] || 'Sem dono'
+        });
+      });
+      after = r.paging?.next?.after || '';
+      pages++;
+    } while (after && pages < 25);
+
+    dados.hubspot = { syncedAt: new Date().toISOString(), deals, total: deals.length };
+    salvar();
+    toast(`🧲 HubSpot sincronizado: ${deals.length} negócios (${HS_UNIDADE[state.timeAtivo]})`);
+  } catch (e) {
+    console.error('hsSync:', e);
+    toast('Erro HubSpot: ' + e.message);
+  } finally {
+    hsState.syncing = false;
+    if (state.view === 'hubspot') renderHubspot();
+    if (state.view === 'dados') renderDados();
+  }
+}
+
+function setHsMes(m) { hsState.mes = m; renderHubspot(); }
+
+function hsImportAbertos() {
+  const hs = dados.hubspot;
+  if (!hs?.deals?.length) { toast('Sincronize o HubSpot primeiro.'); return; }
+  const jaImportados = new Set(dados.forecast.map(f => f.hsId).filter(Boolean));
+  const execPorNome = {};
+  dados.executivos.forEach(e => { execPorNome[e.nome.split(' ')[0].toUpperCase()] = e.id; });
+  let add = 0, semExec = 0;
+  hs.deals.filter(d => d.status === 'open' && !jaImportados.has(d.hsId)).forEach(d => {
+    if (hsState.mes && d.data && parseInt(d.data.split('-')[1]) !== hsState.mes) return;
+    const primeiro = (d.owner || '').split(' ')[0].toUpperCase();
+    const execId = execPorNome[primeiro];
+    if (!execId) { semExec++; return; }
+    dados.forecast.push({ id: state.nextFcId++, exec: execId, empresa: d.nome, valor: d.valor, data: d.data, gestor: '', status: 'open', valorGanho: 0, hsId: d.hsId });
+    add++;
+  });
+  salvar();
+  toast(`⬇ ${add} negócios importados para o Forecast${semExec ? ` · ${semExec} sem executivo correspondente` : ''}`);
+  if (add) setView('forecast');
+}
+
+function renderHubspot() {
+  const area = document.getElementById('content-area');
+  const token = getHsToken();
+  const timeLbl = HS_UNIDADE[state.timeAtivo];
+
+  if (!token) {
+    area.innerHTML = `<div class="section-card" style="max-width:640px;margin:40px auto;text-align:center;padding:48px 36px">
+      <div style="font-size:44px;margin-bottom:12px">🧲</div>
+      <h3 style="font-size:18px;font-weight:800;margin-bottom:8px">Conectar ao HubSpot</h3>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-bottom:20px">
+        Para buscar os negócios do pipeline <strong>Vendas Privadas</strong>, configure um token de
+        <strong>Private App</strong> do HubSpot (Configurações → Integrações → Private Apps),
+        com escopo <code>crm.objects.deals.read</code> e <code>crm.objects.owners.read</code>.</p>
+      <button class="btn btn-primary" onclick="setView('dados')">⚙ Configurar token na aba Dados</button>
+    </div>`;
+    return;
+  }
+
+  const hs = dados.hubspot;
+  if (hsState.syncing) {
+    area.innerHTML = `<div class="empty-state" style="padding:80px 20px"><div style="font-size:36px;animation:fadeUp 0.8s ease infinite alternate">🧲</div><p style="margin-top:12px">Sincronizando com o HubSpot…</p></div>`;
+    return;
+  }
+  if (!hs?.deals) {
+    area.innerHTML = `<div class="section-card" style="max-width:560px;margin:40px auto;text-align:center;padding:48px 36px">
+      <div style="font-size:44px;margin-bottom:12px">🧲</div>
+      <h3 style="font-size:17px;font-weight:800;margin-bottom:8px">Pronto para sincronizar</h3>
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px">Pipeline Vendas Privadas · Oferta de Origem: <strong>${timeLbl}</strong></p>
+      <button class="btn btn-primary" onclick="hsSync()">🔄 Sincronizar agora</button>
+    </div>`;
+    return;
+  }
+
+  // Filtro por mês (closedate)
+  const all = hs.deals;
+  const cntMes = {};
+  all.forEach(d => { if (d.data) { const m = parseInt(d.data.split('-')[1]); cntMes[m] = (cntMes[m] || 0) + 1; } });
+  const filtered = hsState.mes ? all.filter(d => d.data && parseInt(d.data.split('-')[1]) === hsState.mes) : all;
+
+  const open = filtered.filter(d => d.status === 'open');
+  const won  = filtered.filter(d => d.status === 'won');
+  const lost = filtered.filter(d => d.status === 'lost');
+  const sum = a => a.reduce((s, d) => s + d.valor, 0);
+  const totalOpen = sum(open), totalWon = sum(won), totalLost = sum(lost);
+  const taxa = (won.length + lost.length) > 0 ? won.length / (won.length + lost.length) * 100 : 0;
+
+  // Meta vs realizado (HubSpot) do período selecionado
+  const metaPeriodo = hsState.mes ? getMetaTimeMes(hsState.mes, 'TOTAL')
+    : Array.from({length:12},(_,i)=>i+1).reduce((s,m)=>s+getMetaTimeMes(m,'TOTAL'),0);
+  const atingPct = pct(totalWon, metaPeriodo);
+
+  const chips = [0,...Array.from({length:12},(_,i)=>i+1)].map(m => {
+    const lbl = m === 0 ? 'Todos' : MESES_NOMES[m].substring(0,3);
+    const cnt = m === 0 ? all.length : (cntMes[m] || 0);
+    return `<button class="mes-chip${hsState.mes===m?' active':''}" onclick="setHsMes(${m})" style="${!cnt&&m?'opacity:0.4':''}">${lbl}${cnt?`<span class="mes-chip-cnt">${cnt}</span>`:''}</button>`;
+  }).join('');
+
+  // Agrupado por dono
+  const byOwner = {};
+  filtered.forEach(d => {
+    if (!byOwner[d.owner]) byOwner[d.owner] = { open: 0, vOpen: 0, won: 0, vWon: 0, lost: 0, vLost: 0, deals: [] };
+    const g = byOwner[d.owner];
+    g.deals.push(d);
+    if (d.status === 'won') { g.won++; g.vWon += d.valor; }
+    else if (d.status === 'lost') { g.lost++; g.vLost += d.valor; }
+    else { g.open++; g.vOpen += d.valor; }
+  });
+
+  let groups = '';
+  Object.entries(byOwner).sort((a,b) => (b[1].vWon + b[1].vOpen) - (a[1].vWon + a[1].vOpen)).forEach(([owner, g]) => {
+    groups += `<div class="fc-group">
+      <div class="fc-header">
+        <div class="fc-exec-name">👤 ${owner}</div>
+        <div class="fc-exec-total">${g.deals.length} negócios · aberto <strong>${R(g.vOpen)}</strong>${g.vWon?` · <span style="color:#10b981;font-weight:700">🏆 ${R(g.vWon)}</span>`:''}</div>
+      </div>
+      <div class="fc-items">`;
+    g.deals.sort((a,b) => (a.data||'').localeCompare(b.data||'')).forEach(d => {
+      const rowCls = d.status === 'won' ? ' fc-won' : d.status === 'lost' ? ' fc-lost' : '';
+      const tag = d.status === 'won' ? '<span class="fc-status-tag fc-tag-won">🏆 GANHO</span>'
+                : d.status === 'lost' ? '<span class="fc-status-tag fc-tag-lost">✗ PERDIDO</span>'
+                : `<span class="fc-status-tag" style="background:#eef2ff;color:#4338ca">${d.stage}</span>`;
+      groups += `<div class="fc-item${rowCls}">
+        <div class="fc-empresa">${d.nome}${tag}</div>
+        <div class="fc-valor" style="${d.status==='lost'?'text-decoration:line-through;color:var(--text-secondary)':''}">${R(d.valor)}</div>
+        <div class="fc-data">📅 ${d.data ? new Date(d.data+'T12:00:00').toLocaleDateString('pt-BR') : '—'}</div>
+        <a href="https://app.hubspot.com/contacts/22474960/record/0-3/${d.hsId}" target="_blank" class="fc-action-btn" title="Abrir no HubSpot" style="opacity:1;color:#f57722;text-decoration:none">↗</a>
+      </div>`;
+    });
+    groups += `</div></div>`;
+  });
+
+  const syncedAt = hs.syncedAt ? new Date(hs.syncedAt).toLocaleString('pt-BR') : '—';
+  area.innerHTML = `
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+  <span style="font-size:12px;color:var(--text-secondary)">Pipeline <strong>Vendas Privadas</strong> · Oferta de Origem: <strong>${timeLbl}</strong> · Última sync: ${syncedAt}</span>
+  <div style="margin-left:auto;display:flex;gap:8px">
+    <button class="btn btn-outline btn-sm" onclick="hsImportAbertos()">⬇ Importar abertos p/ Forecast</button>
+    <button class="btn btn-primary btn-sm" onclick="hsSync()">🔄 Sincronizar</button>
+  </div>
+</div>
+
+<div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)">
+  <div class="kpi-card">
+    <div class="kpi-label">Pipeline Aberto</div>
+    <div class="kpi-value" style="font-size:20px">${R(totalOpen)}</div>
+    <div class="kpi-sub">${open.length} negócios em andamento</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label" style="color:#10b981">Ganho (Realizado)</div>
+    <div class="kpi-value" style="font-size:20px;color:#10b981">${R(totalWon)}</div>
+    <div class="kpi-sub">${won.length} fechamentos</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label" style="color:#ef4444">Perdido</div>
+    <div class="kpi-value" style="font-size:20px;color:#ef4444">${R(totalLost)}</div>
+    <div class="kpi-sub">${lost.length} negócios</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Taxa de Conversão</div>
+    <div class="kpi-value" style="font-size:20px">${taxa.toFixed(1)}%</div>
+    <div class="kpi-sub">${won.length} de ${won.length + lost.length} decididos</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Meta ${hsState.mes ? MESES_NOMES[hsState.mes] : 'Anual'} (Time)</div>
+    <div class="kpi-value" style="font-size:20px">${R(metaPeriodo)}</div>
+    <div class="kpi-sub">${pctBadge(atingPct)} atingido c/ ganhos HubSpot</div>
+  </div>
+</div>
+
+<div style="background:white;border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px;box-shadow:var(--shadow-sm)">
+  <div style="font-size:11px;font-weight:700;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Mês de Fechamento (closedate)</div>
+  <div class="mes-chips">${chips}</div>
+</div>
+
+<div class="section-card">
+  <div class="section-head"><span class="section-head-title">Negócios por Executivo (dono no HubSpot)</span></div>
+  ${groups || '<div class="empty-state"><p>Nenhum negócio encontrado para este filtro.</p></div>'}
+</div>`;
 }
 
 // =====================================================================
