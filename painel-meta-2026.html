@@ -2068,12 +2068,17 @@ function renderDados() {
          <button class="btn btn-primary" onclick="hsSync()">🔄 Sincronizar negócios agora</button>
          <button class="btn btn-outline" onclick="setView('hubspot')">🧲 Abrir visão HubSpot</button>
        </div>`
-    : `<p>Cole o token de um <strong>Private App</strong> do HubSpot (Configurações → Integrações → Private Apps) com escopos <code>crm.objects.deals.read</code> e <code>crm.objects.owners.read</code>. O painel busca os negócios do pipeline <strong>Vendas Privadas</strong> automaticamente, separados por time via campo Oferta de Origem.</p>
+    : `<p><strong>Modo arquivo (recomendado, sem token):</strong> os negócios do pipeline <strong>Vendas Privadas</strong> são carregados dos arquivos <code>hubspot-base.json</code> / <code>hubspot-novas.json</code> na pasta do painel. Para atualizar, peça ao Claude: <em>"atualiza os dados do HubSpot"</em>.</p>
+       <div class="btn-row" style="margin-bottom:14px">
+         <button class="btn btn-primary" onclick="hsLoadFile()">📂 Carregar dados do arquivo</button>
+         <button class="btn btn-outline" onclick="setView('hubspot')">🧲 Abrir visão HubSpot</button>
+       </div>
+       <p><strong>Modo token (opcional):</strong> quem tiver acesso a Private Apps no HubSpot pode colar o token abaixo (escopos <code>crm.objects.deals.read</code> e <code>crm.objects.owners.read</code>) para sincronizar direto da API.</p>
        <div class="form-row" style="display:flex;gap:10px;align-items:center">
          <input class="form-input" id="hs-token-input" type="password" placeholder="pat-na1-xxxxxxxx-..." style="max-width:420px">
          <button class="btn btn-primary" onclick="saveHsToken()">💾 Salvar e sincronizar</button>
        </div>
-       <p style="font-size:12px;color:var(--text-secondary)">⚠ Requer o painel rodando via <code>server.ps1</code> (http://localhost:3501) — o servidor local faz a ponte com a API do HubSpot.</p>`
+       <p style="font-size:12px;color:var(--text-secondary)">⚠ Ambos os modos requerem o painel rodando via <code>server.ps1</code> (http://localhost:3501).</p>`
   }
 </div>
 <div class="config-section">
@@ -2788,8 +2793,28 @@ async function hsFetch(path, opts = {}) {
   return json;
 }
 
+// Modo arquivo: carrega hubspot-base.json / hubspot-novas.json gerados pelo Claude
+// (conector HubSpot) — não requer token de Private App.
+async function hsLoadFile() {
+  const file = `hubspot-${state.timeAtivo === 'novas' ? 'novas' : 'base'}.json`;
+  try {
+    const resp = await fetch(file + '?_=' + Date.now());
+    if (!resp.ok) throw new Error(resp.status === 404
+      ? `Arquivo ${file} não encontrado. Peça ao Claude: "atualiza os dados do HubSpot".`
+      : 'HTTP ' + resp.status);
+    const json = await resp.json();
+    if (!json.deals) throw new Error('Formato inválido em ' + file);
+    dados.hubspot = json;
+    salvar();
+    toast(`🧲 ${json.deals.length} negócios carregados de ${file}`);
+  } catch (e) {
+    toast('Erro: ' + e.message);
+  }
+  if (state.view === 'hubspot') renderHubspot();
+}
+
 async function hsSync() {
-  if (!getHsToken()) { toast('Configure o token HubSpot na aba Dados.'); setView('dados'); return; }
+  if (!getHsToken()) { await hsLoadFile(); return; }
   if (hsState.syncing) return;
   hsState.syncing = true;
   if (state.view === 'hubspot') renderHubspot();
@@ -2893,20 +2918,20 @@ function renderHubspot() {
   const token = getHsToken();
   const timeLbl = HS_UNIDADE[state.timeAtivo];
 
-  if (!token) {
+  const hs = dados.hubspot;
+  if (!token && !hs?.deals) {
     area.innerHTML = `<div class="section-card" style="max-width:640px;margin:40px auto;text-align:center;padding:48px 36px">
       <div style="font-size:44px;margin-bottom:12px">🧲</div>
-      <h3 style="font-size:18px;font-weight:800;margin-bottom:8px">Conectar ao HubSpot</h3>
+      <h3 style="font-size:18px;font-weight:800;margin-bottom:8px">Dados do HubSpot</h3>
       <p style="font-size:13px;color:var(--text-secondary);line-height:1.7;margin-bottom:20px">
-        Para buscar os negócios do pipeline <strong>Vendas Privadas</strong>, configure um token de
-        <strong>Private App</strong> do HubSpot (Configurações → Integrações → Private Apps),
-        com escopo <code>crm.objects.deals.read</code> e <code>crm.objects.owners.read</code>.</p>
-      <button class="btn btn-primary" onclick="setView('dados')">⚙ Configurar token na aba Dados</button>
+        Os negócios do pipeline <strong>Vendas Privadas</strong> são carregados do arquivo
+        <code>hubspot-${state.timeAtivo === 'novas' ? 'novas' : 'base'}.json</code> na pasta do painel.<br>
+        Para atualizar os dados, peça ao Claude: <em>"atualiza os dados do HubSpot"</em>.<br>
+        <span style="font-size:12px">(Quem tiver token de Private App pode configurá-lo na aba Dados para sync direto.)</span></p>
+      <button class="btn btn-primary" onclick="hsLoadFile()">📂 Carregar dados do arquivo</button>
     </div>`;
     return;
   }
-
-  const hs = dados.hubspot;
   if (hsState.syncing) {
     area.innerHTML = `<div class="empty-state" style="padding:80px 20px"><div style="font-size:36px;animation:fadeUp 0.8s ease infinite alternate">🧲</div><p style="margin-top:12px">Sincronizando com o HubSpot…</p></div>`;
     return;
@@ -2929,10 +2954,20 @@ function renderHubspot() {
 
   const open = filtered.filter(d => d.status === 'open');
   const won  = filtered.filter(d => d.status === 'won');
-  const lost = filtered.filter(d => d.status === 'lost');
   const sum = a => a.reduce((s, d) => s + d.valor, 0);
-  const totalOpen = sum(open), totalWon = sum(won), totalLost = sum(lost);
-  const taxa = (won.length + lost.length) > 0 ? won.length / (won.length + lost.length) * 100 : 0;
+  const totalOpen = sum(open), totalWon = sum(won);
+  // Perdidos: agregado mensal (modo arquivo) ou lista completa (modo token)
+  let lostN = 0, totalLost = 0;
+  if (hs.lostByMonth) {
+    Object.entries(hs.lostByMonth).forEach(([m, l]) => {
+      if (hsState.mes && parseInt(m) !== hsState.mes) return;
+      lostN += l.n || 0; totalLost += l.v || 0;
+    });
+  } else {
+    const lost = filtered.filter(d => d.status === 'lost');
+    lostN = lost.length; totalLost = sum(lost);
+  }
+  const taxa = (won.length + lostN) > 0 ? won.length / (won.length + lostN) * 100 : 0;
 
   // Meta vs realizado (HubSpot) do período selecionado
   const metaPeriodo = hsState.mes ? getMetaTimeMes(hsState.mes, 'TOTAL')
@@ -2989,7 +3024,7 @@ function renderHubspot() {
   </div>
 </div>
 
-<div class="kpi-grid" style="grid-template-columns:repeat(5,1fr)">
+<div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr))">
   <div class="kpi-card">
     <div class="kpi-label">Pipeline Aberto</div>
     <div class="kpi-value" style="font-size:20px">${R(totalOpen)}</div>
@@ -3003,12 +3038,12 @@ function renderHubspot() {
   <div class="kpi-card">
     <div class="kpi-label" style="color:#ef4444">Perdido</div>
     <div class="kpi-value" style="font-size:20px;color:#ef4444">${R(totalLost)}</div>
-    <div class="kpi-sub">${lost.length} negócios</div>
+    <div class="kpi-sub">${lostN} negócios</div>
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Taxa de Conversão</div>
     <div class="kpi-value" style="font-size:20px">${taxa.toFixed(1)}%</div>
-    <div class="kpi-sub">${won.length} de ${won.length + lost.length} decididos</div>
+    <div class="kpi-sub">${won.length} de ${won.length + lostN} decididos</div>
   </div>
   <div class="kpi-card">
     <div class="kpi-label">Meta ${hsState.mes ? MESES_NOMES[hsState.mes] : 'Anual'} (Time)</div>

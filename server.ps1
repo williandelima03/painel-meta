@@ -68,7 +68,7 @@ while ($listener.IsListening) {
     if (Test-Path $file) {
         $bytes = [System.IO.File]::ReadAllBytes($file)
         $ext = [System.IO.Path]::GetExtension($file).ToLower()
-        $ct = switch ($ext) { '.html' {'text/html;charset=utf-8'} '.js' {'application/javascript'} '.css' {'text/css'} default {'application/octet-stream'} }
+        $ct = switch ($ext) { '.html' {'text/html;charset=utf-8'} '.js' {'application/javascript'} '.css' {'text/css'} '.json' {'application/json;charset=utf-8'} default {'application/octet-stream'} }
         $res.ContentType = $ct
         $res.ContentLength64 = $bytes.Length
         $res.OutputStream.Write($bytes, 0, $bytes.Length)
