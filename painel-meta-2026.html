@@ -350,6 +350,9 @@ table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2p
   <div class="content" id="content-area"></div>
 </div>
 
+<!-- Input oculto para importação CSV HubSpot (acessível de qualquer view) -->
+<input type="file" id="hs-csv-input" accept=".csv" style="display:none" onchange="importarHubSpotCsvFile(this)">
+
 <!-- Modal Forecast -->
 <div class="modal-overlay" id="modal-fc">
   <div class="modal">
@@ -1724,7 +1727,8 @@ function renderForecast() {
     ${filtroGestor ? `<button onclick="setFcGestorFiltro('')" title="Limpar" style="border:none;background:none;cursor:pointer;color:var(--text-secondary);font-size:16px;line-height:1;padding:0 2px">×</button>` : ''}
   </div>
   ${(filtroData||filtroGestor) ? `<span style="font-size:12px;color:#3b82f6;font-weight:600">${filteredAll.length} oportunidade${filteredAll.length!==1?'s':''}${filtroData?' · '+new Date(filtroData+'T12:00:00').toLocaleDateString('pt-BR'):''}${filtroGestor?' · '+filtroGestor:''}</span>` : ''}
-  <button class="btn btn-primary" style="margin-left:auto" onclick="openFcModal()">+ Adicionar Oportunidade</button>
+  <button class="btn btn-outline" style="margin-left:auto" onclick="document.getElementById('hs-csv-input').click()" title="Importar relatório CSV exportado do HubSpot">📥 CSV HubSpot</button>
+  <button class="btn btn-primary" onclick="openFcModal()">+ Adicionar Oportunidade</button>
 </div>
 
 <div class="section-card" style="margin-bottom:14px">
@@ -2913,6 +2917,152 @@ function hsImportAbertos() {
   if (add) setView('forecast');
 }
 
+// --- CSV HubSpot importer ---
+
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const row = []; let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { if (inQ && line[i+1]==='"') { cur+='"'; i++; } else inQ=!inQ; }
+      else if (c === ',' && !inQ) { row.push(cur.trim()); cur=''; }
+      else cur += c;
+    }
+    row.push(cur.trim());
+    rows.push(row);
+  }
+  return rows;
+}
+
+function hsNorm(s) {
+  return String(s||'').toLowerCase()
+    .replace(/[áàãâä]/g,'a').replace(/[éêë]/g,'e').replace(/[íî]/g,'i')
+    .replace(/[óõôö]/g,'o').replace(/[úû]/g,'u').replace(/[ç]/g,'c')
+    .replace(/\s+/g,'_');
+}
+
+function hsExecPorEquipe(equipe) {
+  const eq = hsNorm(equipe).replace(/_/g,'');
+  if (eq.includes('legal4b'))   return 'LEGAL_4B';
+  if (eq.includes('supramonte')) return 'SUPRAMONTE';
+  if (eq.includes('norisk'))    return 'NO_RISK';
+  if (eq.includes('efg'))       return 'FG';
+  if (eq.includes('ssp'))       return 'SSP';
+  if (eq.includes('canais'))    {
+    // fallback: tenta achar exec Canal na lista
+    const m = eq.match(/canais[-_]?(\w+)/);
+    if (m) {
+      const e = dados.executivos.find(ex => ex.tipo==='Canal' && hsNorm(ex.id).replace(/_/g,'').includes(m[1]));
+      if (e) return e.id;
+    }
+  }
+  return null;
+}
+
+function importarHubSpotCsvFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const rows = parseCSV(ev.target.result);
+      if (rows.length < 2) throw new Error('CSV vazio ou sem registros');
+
+      const hdr = rows[0].map(h => hsNorm(h));
+      const ci  = (...terms) => { for (const t of terms) { const i = hdr.findIndex(h=>h.includes(t)); if(i>=0) return i; } return -1; };
+
+      const iId    = ci('record_id','id');
+      const iNome  = ci('nome_do_negocio','nome_negocio','nome');
+      const iEmp   = ci('empresas_associadas','empresa');
+      const iProp  = ci('proprietario','dono','owner');
+      const iValor = ci('valor','amount','value');
+      const iEquipe= ci('equipe_da_hubspot','equipe','team');
+      const iEtapa = ci('etapa','stage');
+
+      // Mapeamento nome → execId (primeiro nome + palavras longas)
+      const execPorNome = {};
+      dados.executivos.forEach(e => {
+        execPorNome[e.nome.toUpperCase()] = e.id;
+        e.nome.split(' ').forEach(p => { if (p.length>3 && !execPorNome[p.toUpperCase()]) execPorNome[p.toUpperCase()] = e.id; });
+      });
+
+      const jaImportados = new Set(dados.forecast.map(f=>f.hsId).filter(Boolean));
+
+      // Data padrão: último dia do mês corrente
+      const hoje = new Date();
+      const fimMes = new Date(hoje.getFullYear(), hoje.getMonth()+1, 0);
+      const dataDefault = fimMes.toISOString().split('T')[0];
+
+      let add=0, dup=0, semExec=0, outroTime=0;
+
+      for (let i=1; i<rows.length; i++) {
+        const r = rows[i];
+        if (!r || r.length < 3) continue;
+
+        const hsId       = iId    >= 0 ? r[iId]    : '';
+        const nomeNeg    = iNome  >= 0 ? r[iNome]  : '';
+        const empresa    = iEmp   >= 0 ? r[iEmp]   : nomeNeg;
+        const proprietario = iProp>= 0 ? r[iProp]  : '';
+        const valorRaw   = iValor >= 0 ? r[iValor] : '0';
+        const valor      = parseFloat((valorRaw||'0').replace(',','.')) || 0;
+        const equipe     = iEquipe>= 0 ? r[iEquipe]: '';
+
+        if (!nomeNeg && !empresa) continue;
+
+        // Filtra pelo time ativo
+        const isNovas = /vendas\s*novas/i.test(equipe);
+        if (state.timeAtivo==='base'  && isNovas)  { outroTime++; continue; }
+        if (state.timeAtivo==='novas' && !isNovas) { outroTime++; continue; }
+
+        // Dedup por HubSpot Record ID
+        if (hsId && jaImportados.has(hsId)) { dup++; continue; }
+
+        // Determina exec: canal via equipe, CLT via nome do proprietário
+        let execId = null;
+        const isCanal = /canais/i.test(equipe);
+        if (isCanal) {
+          execId = hsExecPorEquipe(equipe);
+        } else {
+          // Projuris / CLT: mapeia pelo nome do proprietário
+          for (const part of proprietario.toUpperCase().split(' ')) {
+            if (execPorNome[part]) { execId = execPorNome[part]; break; }
+          }
+        }
+
+        if (!execId) { semExec++; continue; }
+
+        const empresaFinal = empresa.length > 80 ? empresa.substring(0,77)+'…' : empresa;
+
+        dados.forecast.push({
+          id: state.nextFcId++, exec: execId, empresa: empresaFinal,
+          valor, data: dataDefault, gestor: proprietario,
+          status: 'open', valorGanho: 0,
+          ...(hsId ? {hsId} : {})
+        });
+        if (hsId) jaImportados.add(hsId);
+        add++;
+      }
+
+      if (add > 0) {
+        fixForecastIds();
+        salvar();
+        toast(`🧲 ${add} negócio${add!==1?'s':''} importado${add!==1?'s':''}${dup?' · '+dup+' já existiam':''}${semExec?' · '+semExec+' sem exec mapeado':''}${outroTime?' · '+outroTime+' de outro time':''}.`);
+        setView('forecast');
+      } else {
+        toast(`Nenhum negócio importado.${dup?' '+dup+' duplicados.':''}${semExec?' '+semExec+' sem exec.':''}${outroTime?' '+outroTime+' de outro time.':''}`);
+      }
+    } catch(err) {
+      console.error('importarHubSpotCsvFile:', err);
+      toast('Erro ao importar CSV: ' + err.message);
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+  input.value = '';
+}
+
 function renderHubspot() {
   const area = document.getElementById('content-area');
   const token = getHsToken();
@@ -2937,11 +3087,17 @@ function renderHubspot() {
     return;
   }
   if (!hs?.deals) {
-    area.innerHTML = `<div class="section-card" style="max-width:560px;margin:40px auto;text-align:center;padding:48px 36px">
+    area.innerHTML = `<div class="section-card" style="max-width:580px;margin:40px auto;text-align:center;padding:48px 36px">
       <div style="font-size:44px;margin-bottom:12px">🧲</div>
-      <h3 style="font-size:17px;font-weight:800;margin-bottom:8px">Pronto para sincronizar</h3>
-      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:20px">Pipeline Vendas Privadas · Oferta de Origem: <strong>${timeLbl}</strong></p>
-      <button class="btn btn-primary" onclick="hsSync()">🔄 Sincronizar agora</button>
+      <h3 style="font-size:17px;font-weight:800;margin-bottom:8px">Importar dados do HubSpot</h3>
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:6px">Pipeline Vendas Privadas · Oferta de Origem: <strong>${timeLbl}</strong></p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:20px;align-items:center">
+        <button class="btn btn-primary" style="min-width:260px" onclick="document.getElementById('hs-csv-input').click()">
+          📥 Importar relatório CSV do HubSpot
+        </button>
+        <p style="font-size:11px;color:var(--text-secondary);margin:0">No HubSpot: Vendas → Forecast → Exportar CSV</p>
+        <button class="btn btn-outline" style="min-width:260px" onclick="hsSync()">🔄 Sincronizar via API / arquivo JSON</button>
+      </div>
     </div>`;
     return;
   }
@@ -3019,6 +3175,7 @@ function renderHubspot() {
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
   <span style="font-size:12px;color:var(--text-secondary)">Pipeline <strong>Vendas Privadas</strong> · Oferta de Origem: <strong>${timeLbl}</strong> · Última sync: ${syncedAt}</span>
   <div style="margin-left:auto;display:flex;gap:8px">
+    <button class="btn btn-outline btn-sm" onclick="document.getElementById('hs-csv-input').click()" title="Importar relatório CSV exportado do HubSpot">📥 Importar CSV</button>
     <button class="btn btn-outline btn-sm" onclick="hsImportAbertos()">⬇ Importar abertos p/ Forecast</button>
     <button class="btn btn-primary btn-sm" onclick="hsSync()">🔄 Sincronizar</button>
   </div>
