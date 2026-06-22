@@ -645,6 +645,14 @@ function initDados() {
         if (f.gestor    === undefined) f.gestor    = '';
         if (f.valorGanho=== undefined) f.valorGanho= 0;
       });
+      // Migração: limpar gestor de itens CLT no forecast (evita duplicação com nomes do HubSpot)
+      if (!dados._cltGestorFixed) {
+        dados.forecast.forEach(f => {
+          const e = dados.executivos.find(ex => ex.id === f.exec);
+          if (e && e.tipo !== 'Canal') f.gestor = '';
+        });
+        dados._cltGestorFixed = true;
+      }
       const maxId = dados.forecast.reduce((mx, f) => Math.max(mx, f.id || 0), 0);
       if (maxId >= state.nextFcId) state.nextFcId = maxId + 1;
       fixForecastIds();
@@ -1888,11 +1896,6 @@ function adiarFc(id) {
   proxMes.setDate(Math.min(d.getDate(), ultimoDia));
   fc.data = proxMes.toISOString().split('T')[0];
   fc.adiamentos = (fc.adiamentos || 0) + 1;
-  // Avança o filtro de mês automaticamente se estava filtrado no mês atual
-  const novoYm = fc.data.substring(0, 7);
-  if (state.fcFiltroMes && state.fcFiltroMes !== novoYm) {
-    state.fcFiltroMes = novoYm;
-  }
   salvar();
   renderForecast();
   const nomeMes = MESES_NOMES[proxMes.getMonth() + 1];
@@ -3140,7 +3143,7 @@ function importarHubSpotCsvFile(input) {
 
         dados.forecast.push({
           id: state.nextFcId++, exec: execId, empresa: empresaFinal,
-          valor, data: dataDefault, gestor: proprietario,
+          valor, data: dataDefault, gestor: isCanal ? proprietario : '',
           status: 'open', valorGanho: 0,
           ...(hsId ? {hsId} : {})
         });
