@@ -334,9 +334,14 @@ table.dt tr.total-row td { font-weight: 700; background: #f8fafc; border-top: 2p
         <select id="mes-select" onchange="setMes(parseInt(this.value))">
           <option value="0">📊 YTD</option>
           <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
-          <option value="4">Abril</option><option value="5" selected>Maio</option><option value="6">Junho</option>
+          <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
           <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
           <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select>
+      </div>
+      <div class="mes-selector" id="exec-selector-wrap" style="display:none">👤
+        <select id="exec-select" onchange="setExecFiltro(this.value)">
+          <option value="">Todos</option>
         </select>
       </div>
       <span class="save-dot" id="save-dot">● Salvo</span>
@@ -542,6 +547,7 @@ let state = {
   fcFiltroData: '',
   fcFiltroGestor: '',
   filtroCanal: '',
+  execFiltro: '',
   timeAtivo: 'base'
 };
 let dados = null;
@@ -665,7 +671,7 @@ function switchTime(t) {
   state.timeAtivo = t;
   localStorage.setItem('painel_meta_2026_time', t);
   state.nextFcId = 100;
-  state.fcFiltroMes = ''; state.fcFiltroData = ''; state.fcFiltroGestor = ''; state.filtroCanal = '';
+  state.fcFiltroMes = ''; state.fcFiltroData = ''; state.fcFiltroGestor = ''; state.filtroCanal = ''; state.execFiltro = '';
   initDados();
   updateYearUI();
   renderView();
@@ -831,6 +837,20 @@ function updateYearUI() {
     const btn = document.getElementById(`team-btn-${t}`);
     if (btn) btn.classList.toggle('active', t === state.timeAtivo);
   });
+  // Sync month selector
+  const mesEl = document.getElementById('mes-select');
+  if (mesEl) mesEl.value = state.mes;
+  // Show/hide exec selector based on current view
+  const wrapEl = document.getElementById('exec-selector-wrap');
+  if (wrapEl) wrapEl.style.display = state.view === 'dashboard' ? 'flex' : 'none';
+  // Populate exec selector
+  const execEl = document.getElementById('exec-select');
+  if (execEl && dados && dados.executivos) {
+    const prev = execEl.value;
+    execEl.innerHTML = '<option value="">Todos</option>' +
+      (dados.executivos || []).map(e => `<option value="${e.id}">${e.nome}</option>`).join('');
+    execEl.value = prev || state.execFiltro || '';
+  }
 }
 
 function transicionarAno(novoAno, copiarMetas) {
@@ -881,9 +901,20 @@ function transicionarAno(novoAno, copiarMetas) {
 // =====================================================================
 // NAVIGATION
 // =====================================================================
+function setExecFiltro(id) {
+  state.execFiltro = state.execFiltro === id ? '' : id;
+  const execEl = document.getElementById('exec-select');
+  if (execEl) execEl.value = state.execFiltro;
+  destroyCharts();
+  renderView();
+}
+
 function setView(v) {
+  if (v !== 'dashboard') state.execFiltro = '';
   state.view = v;
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.view === v));
+  const wrap = document.getElementById('exec-selector-wrap');
+  if (wrap) wrap.style.display = v === 'dashboard' ? 'flex' : 'none';
   const titles = {dashboard:'Dashboard',resultados:'Resultados por Mês',ranking:'Ranking de Executivos',forecast:'Forecast do Mês',hubspot:'HubSpot · Vendas Privadas',historico:'Histórico & Comparativo Anual',dados:'Gerenciar Dados'};
   document.getElementById('view-title').textContent = titles[v] || v;
   destroyCharts();
@@ -964,48 +995,66 @@ function setFiltroCanal(c) {
 function renderDashboard() {
   const m = state.mes;
   const p = state.prod;
-  const execs = dados.executivos;
   const mEff = mesEfetivo(m);
+  const isYtd = m === 0;
 
-  // Meta do time: usa metaTime (valor mensal da planilha), não soma individual
-  const metaMes = getMetaTimeMes(mEff, p);
+  // Exec filter
+  const filtroId = state.execFiltro;
+  const execFiltrado = filtroId ? dados.executivos.find(e => e.id === filtroId) : null;
+  const execs = execFiltrado ? [execFiltrado] : dados.executivos;
+
+  // Sync dropdown
+  const execEl = document.getElementById('exec-select');
+  if (execEl) execEl.value = filtroId || '';
+
+  // Meta: usa metaTime do time quando sem filtro; meta individual quando filtrado
+  const metaMes = execFiltrado
+    ? (isYtd ? 0 : totalMeta(execFiltrado, mEff, p))
+    : getMetaTimeMes(mEff, p);
+  const ytdM = execFiltrado
+    ? ytdMeta(execFiltrado, p, mEff)
+    : ytdMetaTime(p, mEff);
+
   const realMes = execs.reduce((s, e) => s + totalReal(e, mEff, p), 0);
+  const ytdR    = execs.reduce((s, e) => s + ytdReal(e, p, mEff), 0);
+  const pctYtd  = pct(ytdR, ytdM);
 
-  // YTD accumulated through mEff
-  const ytdM = ytdMetaTime(p, mEff);
-  const ytdR = execs.reduce((s, e) => s + ytdReal(e, p, mEff), 0);
-  const pctYtd = pct(ytdR, ytdM);
-
-  // Main KPI: YTD totals when m=0, else month totals
-  const metaTotal = m === 0 ? ytdM : metaMes;
-  const realTotal = m === 0 ? ytdR : realMes;
+  const metaTotal = isYtd ? ytdM : metaMes;
+  const realTotal = isYtd ? ytdR : realMes;
   const pctTotal  = pct(realTotal, metaTotal);
 
-  // Previsão de fechamento: realizado do mês + forecast em aberto (filtrado pelo mês selecionado)
+  // Forecast: filtra por exec se houver filtro
   const anoAtivo = dados.anoAtivo || 2026;
   const mesPrefixo = `${anoAtivo}-${String(mEff).padStart(2,'0')}`;
-  const fcDoMes  = dados.forecast.filter(f => (f.data||'').startsWith(mesPrefixo));
-  const fcAberto = fcDoMes.filter(f => !f.status || f.status === 'open').reduce((s, f) => s + f.valor, 0);
+  let fcDoMes = dados.forecast.filter(f => (f.data||'').startsWith(mesPrefixo));
+  if (execFiltrado) fcDoMes = fcDoMes.filter(f => f.exec === execFiltrado.id);
+  const fcAberto       = fcDoMes.filter(f => !f.status || f.status === 'open').reduce((s, f) => s + f.valor, 0);
   const prevFechamento = realMes + fcAberto;
-  const pctPrev = pct(prevFechamento, metaMes);
+  const pctPrev        = pct(prevFechamento, metaMes);
+  const fcTotal        = fcDoMes.reduce((s, f) => s + f.valor, 0);
 
-  // vs ano anterior
+  // vs ano anterior (somente sem filtro individual)
   const anoAnt = anoAtivo - 1;
   const histAnt = getHistAno(anoAnt);
-  const hist25  = m === 0 ? (histAnt.ytd || 0) : (histAnt.meses[mEff] || 0);
+  const hist25  = execFiltrado ? 0 : (isYtd ? (histAnt.ytd || 0) : (histAnt.meses[mEff] || 0));
   const vsAno   = hist25 > 0 ? pct(realTotal, hist25) : 0;
-
-  const fcTotal = fcDoMes.reduce((s, f) => s + f.valor, 0);
 
   const badgeMes  = pctTotal >= 100 ? 'badge-green' : pctTotal >= 75 ? 'badge-yellow' : 'badge-red';
   const badgeYtd  = pctYtd  >= 100 ? 'badge-green' : pctYtd  >= 75 ? 'badge-yellow' : 'badge-red';
   const badgePrev = pctPrev >= 100 ? 'badge-green' : pctPrev >= 75 ? 'badge-yellow' : 'badge-red';
 
-  const labelPrincipal = m === 0 ? `Meta YTD (Jan–${MESES_NOMES[mEff].substring(0,3)})` : `Meta ${MESES_NOMES[mEff]}`;
-  const labelVsAno     = m === 0 ? `YTD/${anoAnt}` : `${MESES_NOMES[mEff]}/${anoAnt}`;
+  const labelPrincipal = isYtd ? `Meta YTD (Jan–${MESES_NOMES[mEff].substring(0,3)})` : `Meta ${MESES_NOMES[mEff]}`;
+  const labelVsAno     = isYtd ? `YTD/${anoAnt}` : `${MESES_NOMES[mEff]}/${anoAnt}`;
   const prevBorder     = pctPrev >= 100 ? 'border-color:#10b981' : pctPrev >= 75 ? 'border-color:#f59e0b' : '';
 
+  const filtrobanner = execFiltrado
+    ? `<div style="display:flex;align-items:center;gap:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px">
+        <span style="color:#1d4ed8;font-weight:600">🔍 Filtrado: ${execFiltrado.nome}</span>
+        <button onclick="setExecFiltro('')" style="margin-left:auto;font-size:11px;background:#1d4ed8;color:#fff;border:none;border-radius:4px;padding:2px 10px;cursor:pointer">✕ Limpar filtro</button>
+       </div>` : '';
+
   const html = `
+${filtrobanner}
 <div class="kpi-grid">
   <div class="kpi-card">
     <div class="kpi-label">${labelPrincipal}</div>
@@ -1013,9 +1062,9 @@ function renderDashboard() {
     <div class="kpi-sub">Realizado: ${R(realTotal)} <span class="badge ${badgeMes}">${pctTotal.toFixed(1)}%</span></div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">${m === 0 ? `Previsão Fechamento ${MESES_NOMES[mEff].substring(0,3)}` : 'Acumulado (YTD)'}</div>
-    <div class="kpi-value">${m === 0 ? R(prevFechamento) : R(ytdR)}</div>
-    <div class="kpi-sub">${m === 0
+    <div class="kpi-label">${isYtd ? `Previsão Fechamento ${MESES_NOMES[mEff].substring(0,3)}` : 'Acumulado (YTD)'}</div>
+    <div class="kpi-value">${isYtd ? R(prevFechamento) : R(ytdR)}</div>
+    <div class="kpi-sub">${isYtd
       ? `Real + FC aberto · Meta: ${R(metaMes)} <span class="badge ${badgePrev}">${pctPrev.toFixed(1)}%</span>`
       : `Meta YTD: ${R(ytdM)} <span class="badge ${badgeYtd}">${pctYtd.toFixed(1)}%</span>`
     }</div>
@@ -1038,7 +1087,7 @@ function renderDashboard() {
 </div>
 <div class="charts-grid">
   <div class="chart-card">
-    <div class="chart-title">${m === 0 ? `Meta vs Realizado YTD (Jan–${MESES_NOMES[mEff].substring(0,3)})` : `Meta vs Realizado — ${MESES_NOMES[mEff]}`}</div>
+    <div class="chart-title">${isYtd ? `Meta vs Realizado YTD (Jan–${MESES_NOMES[mEff].substring(0,3)})` : `Meta vs Realizado — ${MESES_NOMES[mEff]}`}<span style="font-size:11px;color:var(--text-secondary);margin-left:8px">clique na barra para filtrar</span></div>
     <div class="chart-wrap" style="height:260px"><canvas id="chart-bar"></canvas></div>
   </div>
   <div class="chart-card">
@@ -1052,19 +1101,19 @@ function renderDashboard() {
     <div class="chart-wrap" style="height:220px"><canvas id="chart-donut"></canvas></div>
   </div>
   <div class="section-card" style="margin-bottom:0">
-    <div class="section-head"><span class="section-head-title">Top 5 Ranking — ${m === 0 ? 'YTD' : MESES_NOMES[mEff]}</span></div>
+    <div class="section-head"><span class="section-head-title">Top 5 Ranking — ${isYtd ? 'YTD' : MESES_NOMES[mEff]}</span><span style="font-size:11px;color:var(--text-secondary)">clique para filtrar</span></div>
     <table class="dt">
       <thead><tr><th>#</th><th>Executivo</th><th>Tipo</th><th class="right">Meta</th><th class="right">Realizado</th><th class="right">%</th></tr></thead>
-      <tbody>${renderTop5(mEff, p, m === 0)}</tbody>
+      <tbody>${renderTop5(mEff, p, isYtd)}</tbody>
     </table>
   </div>
 </div>`;
 
   document.getElementById('content-area').innerHTML = html;
   document.getElementById('content-area').insertAdjacentHTML('beforeend', buildDashQuarterHtml(mEff, p));
-  buildBarChart(mEff, p, m === 0);
-  buildLineChart(mEff, p);
-  buildDonutChart(mEff, m === 0);
+  buildBarChart(mEff, p, isYtd, execs);
+  buildLineChart(mEff, p, execs);
+  buildDonutChart(mEff, isYtd, execs);
 }
 
 function renderTop5(m, p, isYtd) {
@@ -1080,12 +1129,14 @@ function renderTop5(m, p, isYtd) {
   return sorted.map((x, i) => {
     const p2 = pct(x.real, x.meta);
     const rCls = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'rank-other';
-    return `<tr class="hoverable"><td><span class="rank-num ${rCls}">${i+1}</span></td><td>${x.e.nome}</td><td>${x.e.tipo}</td><td class="right">${R(x.meta)}</td><td class="right">${R(x.real)}</td><td class="right">${pctBadge(p2)}</td></tr>`;
+    const isActive = state.execFiltro === x.e.id;
+    const rowStyle = isActive ? 'background:#eff6ff;font-weight:600;cursor:pointer' : 'cursor:pointer';
+    return `<tr class="hoverable" style="${rowStyle}" onclick="setExecFiltro('${x.e.id}')"><td><span class="rank-num ${rCls}">${i+1}</span></td><td>${x.e.nome}${isActive?' ✓':''}</td><td>${x.e.tipo}</td><td class="right">${R(x.meta)}</td><td class="right">${R(x.real)}</td><td class="right">${pctBadge(p2)}</td></tr>`;
   }).join('');
 }
 
-function buildBarChart(m, p, isYtd) {
-  const execs = dados.executivos.filter(e =>
+function buildBarChart(m, p, isYtd, execsIn) {
+  const execs = (execsIn || dados.executivos).filter(e =>
     isYtd ? (ytdMeta(e,p,m) > 0 || ytdReal(e,p,m) > 0)
            : (totalMeta(e,m,p) > 0 || totalReal(e,m,p) > 0)
   );
@@ -1129,6 +1180,13 @@ function buildBarChart(m, p, isYtd) {
     options: {
       responsive: true, maintainAspectRatio: false,
       layout: { padding: { top: 18 } },
+      onClick: (event, elements) => {
+        if (elements.length > 0) {
+          const idx = elements[0].index;
+          const execId = execs[idx] ? execs[idx].id : null;
+          if (execId) setExecFiltro(execId);
+        }
+      },
       plugins: {
         legend: {position:'bottom', labels:{font:{size:11}}},
         tooltip: {callbacks:{label: c => {
@@ -1147,12 +1205,13 @@ function buildBarChart(m, p, isYtd) {
   });
 }
 
-function buildLineChart(m, p) {
+function buildLineChart(m, p, execsIn) {
   const ctx = document.getElementById('chart-line');
   if (!ctx) return;
+  const src = execsIn || dados.executivos;
   const labels = Array.from({length: m}, (_,i) => MESES_NOMES[i+1].substring(0,3));
-  const metas = Array.from({length: m}, (_,i) => dados.executivos.reduce((s,e)=>s+totalMeta(e,i+1,p),0));
-  const reais = Array.from({length: m}, (_,i) => dados.executivos.reduce((s,e)=>s+totalReal(e,i+1,p),0));
+  const metas = Array.from({length: m}, (_,i) => src.reduce((s,e)=>s+totalMeta(e,i+1,p),0));
+  const reais = Array.from({length: m}, (_,i) => src.reduce((s,e)=>s+totalReal(e,i+1,p),0));
   charts.line = new Chart(ctx, {
     type: 'line',
     data: {
@@ -1170,12 +1229,13 @@ function buildLineChart(m, p) {
   });
 }
 
-function buildDonutChart(m, isYtd) {
+function buildDonutChart(m, isYtd, execsIn) {
   const ctx = document.getElementById('chart-donut');
   if (!ctx) return;
-  const empR = dados.executivos.reduce((s,e)=>s+(isYtd?ytdReal(e,'EMP',m):totalReal(e,m,'EMP')),0);
-  const jurR = dados.executivos.reduce((s,e)=>s+(isYtd?ytdReal(e,'JUR',m):totalReal(e,m,'JUR')),0);
-  const oysR = dados.executivos.reduce((s,e)=>s+(isYtd?ytdReal(e,'OYS',m):totalReal(e,m,'OYS')),0);
+  const src = execsIn || dados.executivos;
+  const empR = src.reduce((s,e)=>s+(isYtd?ytdReal(e,'EMP',m):totalReal(e,m,'EMP')),0);
+  const jurR = src.reduce((s,e)=>s+(isYtd?ytdReal(e,'JUR',m):totalReal(e,m,'JUR')),0);
+  const oysR = src.reduce((s,e)=>s+(isYtd?ytdReal(e,'OYS',m):totalReal(e,m,'OYS')),0);
   charts.donut = new Chart(ctx, {
     type: 'doughnut',
     data: {
