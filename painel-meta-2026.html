@@ -494,6 +494,7 @@ let state = {
   fcFiltroMes: '',
   fcFiltroData: '',
   fcFiltroGestor: '',
+  fcFiltroStatus: '',
   timeAtivo: 'base'
 };
 let dados = null;
@@ -611,7 +612,7 @@ function switchTime(t) {
   state.timeAtivo = t;
   localStorage.setItem('painel_meta_2026_time', t);
   state.nextFcId = 100;
-  state.fcFiltroMes = ''; state.fcFiltroData = ''; state.fcFiltroGestor = '';
+  state.fcFiltroMes = ''; state.fcFiltroData = ''; state.fcFiltroGestor = ''; state.fcFiltroStatus = '';
   initDados();
   updateYearUI();
   renderView();
@@ -777,6 +778,16 @@ function updateYearUI() {
     const btn = document.getElementById(`team-btn-${t}`);
     if (btn) btn.classList.toggle('active', t === state.timeAtivo);
   });
+  // Esconde abas Jurimetria e Oystr em Vendas Novas
+  const isNovas = state.timeAtivo === 'novas';
+  const tabs = document.querySelectorAll('.produto-tab');
+  if (tabs[2]) tabs[2].style.display = isNovas ? 'none' : '';
+  if (tabs[3]) tabs[3].style.display = isNovas ? 'none' : '';
+  if (isNovas && (state.prod === 'JUR' || state.prod === 'OYS')) {
+    state.prod = 'TOTAL';
+    tabs[0].classList.add('active');
+    tabs[1].classList.remove('active');
+  }
 }
 
 function transicionarAno(novoAno, copiarMetas) {
@@ -1139,6 +1150,7 @@ function renderResultados() {
   const isYtd = m === 0;
   const p = state.prod;
   const sort = state.sortResultados || 'default';
+  const isNovas = state.timeAtivo === 'novas';
   let execs = [...dados.executivos];
 
   if (sort === 'mrr') {
@@ -1172,7 +1184,8 @@ function renderResultados() {
       const jurR = isYtd ? ytdReal(e,'JUR',mEff) : getMes(e,mEff).JUR.real;
       const oysM = isYtd ? ytdMeta(e,'OYS',mEff) : getMes(e,mEff).OYS.meta;
       const oysR = isYtd ? ytdReal(e,'OYS',mEff) : getMes(e,mEff).OYS.real;
-      const mt = empM+jurM+oysM, rt = empR+jurR+oysR;
+      const mt = isNovas ? empM : empM+jurM+oysM;
+      const rt = isNovas ? empR : empR+jurR+oysR;
       const pt = pct(rt, mt), gap = rt - mt;
       const rEmpCell = isYtd ? R(empR) : `<span class="editable-val" onclick="startEdit(this,'${e.id}',${mEff},'EMP')">${R(empR)}</span>`;
       const rJurCell = isYtd ? R(jurR) : `<span class="editable-val" onclick="startEdit(this,'${e.id}',${mEff},'JUR')">${R(jurR)}</span>`;
@@ -1180,8 +1193,8 @@ function renderResultados() {
       rows += `<tr class="hoverable">
         <td><strong>${e.nome}</strong></td><td>${tipoTag}</td>
         <td class="right col-emp">${R(empM)}</td><td class="right col-emp-end">${rEmpCell}</td>
-        <td class="right col-jur">${R(jurM)}</td><td class="right col-jur-end">${rJurCell}</td>
-        <td class="right col-oys">${R(oysM)}</td><td class="right col-oys-end">${rOysCell}</td>
+        ${isNovas ? '' : `<td class="right col-jur">${R(jurM)}</td><td class="right col-jur-end">${rJurCell}</td>
+        <td class="right col-oys">${R(oysM)}</td><td class="right col-oys-end">${rOysCell}</td>`}
         <td class="right"><strong>${R(mt)}</strong></td>
         <td class="right"><strong>${R(rt)}</strong></td>
         <td class="right">${pctBadge(pt)}</td>
@@ -1208,16 +1221,16 @@ function renderResultados() {
   const sumRealJUR = dados.executivos.reduce((s,e)=>s+(isYtd?ytdReal(e,'JUR',mEff):getMes(e,mEff).JUR.real),0);
   const sumMetaOYS = dados.executivos.reduce((s,e)=>s+(isYtd?ytdMeta(e,'OYS',mEff):getMes(e,mEff).OYS.meta),0);
   const sumRealOYS = dados.executivos.reduce((s,e)=>s+(isYtd?ytdReal(e,'OYS',mEff):getMes(e,mEff).OYS.real),0);
-  const sumMeta = sumMetaEMP+sumMetaJUR+sumMetaOYS;
-  const sumReal = sumRealEMP+sumRealJUR+sumRealOYS;
+  const sumMeta = isNovas ? sumMetaEMP : sumMetaEMP+sumMetaJUR+sumMetaOYS;
+  const sumReal = isNovas ? sumRealEMP : sumRealEMP+sumRealJUR+sumRealOYS;
 
   let totalRow = '';
   if (p === 'TOTAL') {
     totalRow = `<tr class="total-row">
       <td>TOTAL</td><td></td>
       <td class="right col-emp">${R(sumMetaEMP)}</td><td class="right col-emp-end">${R(sumRealEMP)}</td>
-      <td class="right col-jur">${R(sumMetaJUR)}</td><td class="right col-jur-end">${R(sumRealJUR)}</td>
-      <td class="right col-oys">${R(sumMetaOYS)}</td><td class="right col-oys-end">${R(sumRealOYS)}</td>
+      ${isNovas ? '' : `<td class="right col-jur">${R(sumMetaJUR)}</td><td class="right col-jur-end">${R(sumRealJUR)}</td>
+      <td class="right col-oys">${R(sumMetaOYS)}</td><td class="right col-oys-end">${R(sumRealOYS)}</td>`}
       <td class="right">${R(sumMeta)}</td><td class="right">${R(sumReal)}</td>
       <td class="right">${pctBadge(pct(sumReal,sumMeta))}</td>
       <td class="right">${R(sumReal-sumMeta)}</td>
@@ -1233,8 +1246,8 @@ function renderResultados() {
     thead = `<tr>
       <th rowspan="2">Executivo</th><th rowspan="2">Tipo</th>
       <th colspan="2" class="grp-head-emp">Empresas</th>
-      <th colspan="2" class="grp-head-jur">Jurimetria</th>
-      <th colspan="2" class="grp-head-oys">Oystr</th>
+      ${isNovas ? '' : `<th colspan="2" class="grp-head-jur">Jurimetria</th>
+      <th colspan="2" class="grp-head-oys">Oystr</th>`}
       <th rowspan="2" class="right">Meta Total</th>
       <th rowspan="2" class="right">Realizado</th>
       <th rowspan="2" class="right">%</th>
@@ -1242,10 +1255,10 @@ function renderResultados() {
     </tr><tr>
       <th class="right col-emp" style="background:#eff6ff;font-size:10px">Meta</th>
       <th class="right col-emp-end" style="background:#eff6ff;font-size:10px">Realizado</th>
-      <th class="right col-jur" style="background:#f3e8ff;font-size:10px">Meta</th>
+      ${isNovas ? '' : `<th class="right col-jur" style="background:#f3e8ff;font-size:10px">Meta</th>
       <th class="right col-jur-end" style="background:#f3e8ff;font-size:10px">Realizado</th>
       <th class="right col-oys" style="background:#fef3c7;font-size:10px">Meta</th>
-      <th class="right col-oys-end" style="background:#fef3c7;font-size:10px">Realizado</th>
+      <th class="right col-oys-end" style="background:#fef3c7;font-size:10px">Realizado</th>`}
     </tr>`;
   } else {
     const pNome = {EMP:'Empresas',JUR:'Jurimetria',OYS:'Oystr'}[p];
@@ -1508,6 +1521,7 @@ function renderForecast() {
   const filtroMes    = state.fcFiltroMes;
   const filtroData   = state.fcFiltroData;
   const filtroGestor = state.fcFiltroGestor;
+  const filtroStatus = state.fcFiltroStatus;
   const anoAt        = dados.anoAtivo || 2026;
 
   const gestoresUnicos = [...new Set(
@@ -1526,6 +1540,9 @@ function renderForecast() {
     if (filtroMes    && !(f.data||'').startsWith(filtroMes)) return false;
     if (filtroData   && f.data !== filtroData)               return false;
     if (filtroGestor && gestor !== filtroGestor)             return false;
+    if (filtroStatus === 'open' && f.status && f.status !== 'open') return false;
+    if (filtroStatus === 'won'  && f.status !== 'won')               return false;
+    if (filtroStatus === 'lost' && f.status !== 'lost')              return false;
     return true;
   });
 
@@ -1685,6 +1702,13 @@ function renderForecast() {
   <div class="mes-chips">${mesesChips}</div>
 </div>
 
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+  <span style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px">Status:</span>
+  ${[['','Todos'],['open','🟢 Ativo'],['won','🏆 Ganho'],['lost','✗ Perdido']].map(([v,lbl]) =>
+    `<button onclick="setFcStatusFiltro('${v}')" style="font-size:12px;padding:4px 12px;border-radius:20px;border:1px solid ${filtroStatus===v?'#3b82f6':'var(--border)'};background:${filtroStatus===v?'#3b82f6':'white'};color:${filtroStatus===v?'white':'var(--text-primary)'};cursor:pointer;font-weight:${filtroStatus===v?'700':'400'}">${lbl}</button>`
+  ).join('')}
+</div>
+
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
   <div style="display:flex;align-items:center;gap:6px;background:white;border:1px solid var(--border);border-radius:8px;padding:5px 10px;${filtroData?'border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,0.1)':''}">
     <span style="font-size:13px;color:var(--text-secondary)">📅 Dia:</span>
@@ -1700,7 +1724,7 @@ function renderForecast() {
     </select>
     ${filtroGestor ? `<button onclick="setFcGestorFiltro('')" title="Limpar" style="border:none;background:none;cursor:pointer;color:var(--text-secondary);font-size:16px;line-height:1;padding:0 2px">×</button>` : ''}
   </div>
-  ${(filtroData||filtroGestor) ? `<span style="font-size:12px;color:#3b82f6;font-weight:600">${filteredAll.length} oportunidade${filteredAll.length!==1?'s':''}${filtroData?' · '+new Date(filtroData+'T12:00:00').toLocaleDateString('pt-BR'):''}${filtroGestor?' · '+filtroGestor:''}</span>` : ''}
+  ${(filtroData||filtroGestor||filtroStatus) ? `<span style="font-size:12px;color:#3b82f6;font-weight:600">${filteredAll.length} oportunidade${filteredAll.length!==1?'s':''}${filtroData?' · '+new Date(filtroData+'T12:00:00').toLocaleDateString('pt-BR'):''}${filtroGestor?' · '+filtroGestor:''}${filtroStatus?' · '+{open:'Ativo',won:'Ganho',lost:'Perdido'}[filtroStatus]:''}</span>` : ''}
   <button class="btn btn-primary" style="margin-left:auto" onclick="openFcModal()">+ Adicionar Oportunidade</button>
 </div>
 
@@ -1746,6 +1770,11 @@ function setFcFiltro(data) {
 
 function setFcGestorFiltro(gestor) {
   state.fcFiltroGestor = gestor;
+  renderForecast();
+}
+
+function setFcStatusFiltro(status) {
+  state.fcFiltroStatus = status;
   renderForecast();
 }
 
