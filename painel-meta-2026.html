@@ -615,52 +615,77 @@ function initDados() {
 
   const saved = localStorage.getItem(getStorageKey());
   if (saved) {
+    // Faz backup automático antes de qualquer migração
+    const backupKey = getStorageKey() + '_backup';
+    if (!localStorage.getItem(backupKey)) {
+      localStorage.setItem(backupKey, saved);
+    }
+
+    let parseOk = false;
     try {
       dados = JSON.parse(saved);
-      if (!dados.forecast) dados.forecast = state.timeAtivo === 'base' ? JSON.parse(JSON.stringify(FC_INICIAL)) : [];
-      if (!dados.anoAtivo) dados.anoAtivo = 2026;
-      if (!dados.historico) dados.historico = {
-        2025: { ytd: HIST_2025.ytd, meses: Object.assign({}, HIST_2025.meses), tri1: HIST_2025.tri1, tri2: HIST_2025.tri2, tri3: 0, tri4: 0 }
-      };
-      // Migração: zerar meta jun (mês 6) de HC3 e HC4 — executada uma única vez
-      if (!dados._migratedHcJune && dados.executivos) {
-        ['HC3','HC4'].forEach(id => {
-          const e = dados.executivos.find(ex => ex.id === id);
-          if (e) for (let m = 1; m <= 6; m++) {
-            const md = e.meses?.[m];
-            if (md) { md.EMP.meta = 0; md.JUR.meta = 0; md.OYS.meta = 0; }
-          }
-        });
-        dados._migratedHcJune = true;
-        dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
-      }
-      // Migração: carregar executivos Vendas Novas da planilha oficial 2026
-      if (!dados._novasExecs2026v2 && state.timeAtivo === 'novas') {
-        dados.executivos = JSON.parse(JSON.stringify(EXEC_INICIAL_NOVAS));
-        dados._novasExecs2026v2 = true;
-        dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
-      }
-      if (!dados.metaTime) dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
-      dados.forecast.forEach(f => {
-        if (f.status    === undefined) f.status    = 'open';
-        if (f.gestor    === undefined) f.gestor    = '';
-        if (f.valorGanho=== undefined) f.valorGanho= 0;
-      });
-      // Migração: limpar gestor de itens CLT no forecast (evita duplicação com nomes do HubSpot)
-      if (!dados._cltGestorFixed) {
-        dados.forecast.forEach(f => {
-          const e = dados.executivos.find(ex => ex.id === f.exec);
-          if (e && e.tipo !== 'Canal') f.gestor = '';
-        });
-        dados._cltGestorFixed = true;
-      }
-      const maxId = dados.forecast.reduce((mx, f) => Math.max(mx, f.id || 0), 0);
-      if (maxId >= state.nextFcId) state.nextFcId = maxId + 1;
-      fixForecastIds();
+      parseOk = true;
+    } catch(e) {
+      console.error('[initDados] Erro ao fazer JSON.parse dos dados salvos — dados preservados intactos.', e);
+      // Não sobrescreve: aborta a inicialização para não apagar dados válidos
+      dados = null;
       return;
-    } catch(e) {}
+    }
+
+    if (parseOk) {
+      try {
+        if (!dados.forecast) dados.forecast = state.timeAtivo === 'base' ? JSON.parse(JSON.stringify(FC_INICIAL)) : [];
+        if (!dados.anoAtivo) dados.anoAtivo = 2026;
+        if (!dados.historico) dados.historico = {
+          2025: { ytd: HIST_2025.ytd, meses: Object.assign({}, HIST_2025.meses), tri1: HIST_2025.tri1, tri2: HIST_2025.tri2, tri3: 0, tri4: 0 }
+        };
+        // Migração: zerar meta jun (mês 6) de HC3 e HC4 — executada uma única vez
+        if (!dados._migratedHcJune && dados.executivos) {
+          ['HC3','HC4'].forEach(id => {
+            const e = dados.executivos.find(ex => ex.id === id);
+            if (e) for (let m = 1; m <= 6; m++) {
+              const md = e.meses?.[m];
+              if (md) { md.EMP.meta = 0; md.JUR.meta = 0; md.OYS.meta = 0; }
+            }
+          });
+          dados._migratedHcJune = true;
+          dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
+        }
+        // Migração: carregar executivos Vendas Novas da planilha oficial 2026
+        if (!dados._novasExecs2026v2 && state.timeAtivo === 'novas') {
+          dados.executivos = JSON.parse(JSON.stringify(EXEC_INICIAL_NOVAS));
+          dados._novasExecs2026v2 = true;
+          dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
+        }
+        if (!dados.metaTime) dados.metaTime = buildMetaTimeFromExecs(dados.executivos);
+        dados.forecast.forEach(f => {
+          if (f.status    === undefined) f.status    = 'open';
+          if (f.gestor    === undefined) f.gestor    = '';
+          if (f.valorGanho=== undefined) f.valorGanho= 0;
+        });
+        // Migração: limpar gestor de itens CLT no forecast (evita duplicação com nomes do HubSpot)
+        if (!dados._cltGestorFixed) {
+          dados.forecast.forEach(f => {
+            const e = dados.executivos.find(ex => ex.id === f.exec);
+            if (e && e.tipo !== 'Canal') f.gestor = '';
+          });
+          dados._cltGestorFixed = true;
+        }
+        const maxId = dados.forecast.reduce((mx, f) => Math.max(mx, f.id || 0), 0);
+        if (maxId >= state.nextFcId) state.nextFcId = maxId + 1;
+        fixForecastIds();
+        return;
+      } catch(e) {
+        // Erro numa migração: preserva o dado original no localStorage e mostra aviso
+        console.error('[initDados] Erro numa migração — dado original preservado. Recarregue a página.', e);
+        localStorage.setItem(getStorageKey(), saved); // garante que o original não foi sobrescrito
+        dados = JSON.parse(saved); // usa dados sem migração para não travar a tela
+        return;
+      }
+    }
   }
-  // Inicialização em branco para o time ativo
+
+  // Só chega aqui se não havia nenhum dado salvo (primeira abertura)
   const isBase = state.timeAtivo === 'base';
   dados = {
     anoAtivo: 2026,
